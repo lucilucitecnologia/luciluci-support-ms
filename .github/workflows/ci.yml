@@ -2,10 +2,8 @@ name: ci
 
 on:
     pull_request:
-    push:
-        branches:
-            - main
-            - develop
+    # Push em develop/main roda este workflow via cd.yml, antes do deploy.
+    workflow_call:
 
 jobs:
     quality:
