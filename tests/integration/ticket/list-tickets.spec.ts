@@ -126,6 +126,7 @@ describe('Integration: RF07a/RF07b ticket listings', () => {
 			[
 				'id',
 				'number',
+				'subject',
 				'createdAt',
 				'departmentId',
 				'requesterId',

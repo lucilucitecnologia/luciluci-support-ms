@@ -348,6 +348,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 					required: [
 						'id',
 						'number',
+						'subject',
 						'createdAt',
 						'departmentId',
 						'requesterId',
@@ -358,6 +359,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 					properties: {
 						id: { type: 'string', format: 'uuid' },
 						number: { type: 'integer', minimum: 1 },
+						subject: { type: 'string' },
 						createdAt: { type: 'string', format: 'date-time' },
 						departmentId: { type: 'string', format: 'uuid' },
 						requesterId: { type: 'string' },
