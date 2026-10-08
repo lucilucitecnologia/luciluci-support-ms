@@ -480,6 +480,7 @@ describe('Contract: Support bootstrap OpenAPI', () => {
 		expect(item.required).toEqual([
 			'id',
 			'number',
+			'subject',
 			'createdAt',
 			'departmentId',
 			'requesterId',

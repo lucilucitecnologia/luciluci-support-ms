@@ -278,11 +278,13 @@
 					"origin": { "$ref": "#/components/schemas/TicketOrigin" },
 					"priority": { "$ref": "#/components/schemas/TicketPriority" },
 					"requesterId": { "type": "string" },
-					"status": { "$ref": "#/components/schemas/TicketAdminStatus" }
+					"status": { "$ref": "#/components/schemas/TicketAdminStatus" },
+					"subject": { "type": "string" }
 				},
 				"required": [
 					"id",
 					"number",
+					"subject",
 					"createdAt",
 					"departmentId",
 					"requesterId",

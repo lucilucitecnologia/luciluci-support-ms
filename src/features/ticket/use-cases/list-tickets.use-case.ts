@@ -7,6 +7,7 @@ import IListTicketsRepository, {
 export interface ListedTicket {
 	id: string;
 	number: number;
+	subject: string;
 	createdAt: string;
 	departmentId: string;
 	requesterId: string;
@@ -24,6 +25,7 @@ function toListedTicket(ticket: Ticket): ListedTicket {
 	return {
 		id: ticket.id,
 		number: ticket.number,
+		subject: ticket.subject,
 		createdAt: ticket.createdAt.toISOString(),
 		departmentId: ticket.departmentId,
 		requesterId: ticket.requesterId,
