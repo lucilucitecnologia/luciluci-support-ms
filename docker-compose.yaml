@@ -1,34 +1,53 @@
 services:
-    app:
-        build:
-            context: .
-        container_name: support-ms-app
-        restart: unless-stopped
-        depends_on:
-            - db
-        environment:
-            NODE_ENV: production
-            SERVER_PORT: 3000
-            DB_HOST: db
-            DB_PORT: 5432
-            DB_USER: ${DB_USER:-postgres}
-            DB_PASSWORD: ${DB_PASSWORD:-postgres}
-            DB_NAME: ${DB_NAME:-support_ms}
-        ports:
-            - '${SERVER_PORT:-3000}:3000'
-
-    db:
+    db-support:
         image: postgres:16
-        container_name: support-ms-db
+        container_name: db-support
         restart: unless-stopped
         environment:
-            POSTGRES_USER: ${DB_USER:-postgres}
-            POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-            POSTGRES_DB: ${DB_NAME:-support_ms}
-        ports:
-            - '${DB_PORT:-5432}:5432'
+            POSTGRES_USER: ${DB_USER}
+            POSTGRES_PASSWORD: ${DB_PASSWORD}
+            POSTGRES_DB: ${DB_NAME}
+            TZ: America/Sao_Paulo
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_NAME}']
+            interval: 5s
+            timeout: 3s
+            retries: 10
         volumes:
             - postgres_data:/var/lib/postgresql/data
+        networks:
+            - internal
+
+    ms-support:
+        build:
+            context: ./
+            dockerfile: Dockerfile
+        container_name: ms-support
+        restart: unless-stopped
+        env_file: .env
+        environment:
+            NODE_ENV: production
+            DB_HOST: db-support
+            DB_PORT: 5432
+            VIRTUAL_HOST: ${VIRTUAL_HOST}
+            LETSENCRYPT_HOST: ${VIRTUAL_HOST}
+            VIRTUAL_PORT: ${SERVER_PORT}
+            TZ: America/Sao_Paulo
+        depends_on:
+            db-support:
+                condition: service_healthy
+        networks:
+            - internal
+            - sistema-mmn
+            - web-proxy
 
 volumes:
     postgres_data:
+
+networks:
+    internal:
+        driver: bridge
+    sistema-mmn:
+        external: true
+    web-proxy:
+        external: true
