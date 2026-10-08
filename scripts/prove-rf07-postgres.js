@@ -229,6 +229,7 @@ async function main() {
 				[
 					'id',
 					'number',
+					'subject',
 					'createdAt',
 					'departmentId',
 					'requesterId',
