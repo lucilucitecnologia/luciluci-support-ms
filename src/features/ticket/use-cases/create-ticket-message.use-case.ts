@@ -6,6 +6,7 @@ import UnprocessableEntityError from '../../../shared/kernel/exceptions/unproces
 import IDepartmentRepository from '../../department/use-cases/repositories/idepartment.repository';
 import TicketAdminStatus from '../entities/enums/ticket-admin-status.enum';
 import TicketAuditAction from '../entities/enums/ticket-audit-action.enum';
+import TicketRequesterStatus from '../entities/enums/ticket-requester-status.enum';
 import TicketAuditLog from '../entities/ticket-audit-log.entity';
 import TicketMessage from '../entities/ticket-message.entity';
 import TicketMessageMedia from '../entities/ticket-message-media.entity';
@@ -85,10 +86,16 @@ export default class CreateTicketMessageUseCase {
 			}),
 		);
 
+		const reopensRequesterStatus =
+			actor.role !== 'admin' && ticket.requesterStatus === TicketRequesterStatus.Resolvido;
 		if (actor.role === 'admin') {
 			await this.ticketRepository.touchAfterAdminMessage(ticket.id, timestamp);
 		} else {
-			await this.ticketRepository.updateAfterRequesterMessage(ticket.id, timestamp);
+			await this.ticketRepository.updateAfterRequesterMessage(
+				ticket.id,
+				timestamp,
+				reopensRequesterStatus,
+			);
 		}
 
 		const audit = (
@@ -113,6 +120,15 @@ export default class CreateTicketMessageUseCase {
 		if (actor.role !== 'admin') {
 			await this.ticketRepository.createAuditLog(
 				audit(TicketAuditAction.AlteracaoStatus, 'admin', TicketAdminStatus.Pendente),
+			);
+		}
+		if (reopensRequesterStatus) {
+			await this.ticketRepository.createAuditLog(
+				audit(
+					TicketAuditAction.AlteracaoStatus,
+					'requester',
+					TicketRequesterStatus.NaoResolvido,
+				),
 			);
 		}
 

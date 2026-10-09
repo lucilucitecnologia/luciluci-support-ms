@@ -976,7 +976,7 @@
 				"tags": ["Tickets"]
 			},
 			"post": {
-				"description": "RF10. Body authorId/type must match actor headers. Admin needs current Department membership and may create an internal message. Requester owner must send a visible message. Every POST creates a new message; requester messages assign adminStatus=pendente and write two audits even if already pending. Ticket is locked before Department; all writes are atomic.",
+				"description": "RF10. Body authorId/type must match actor headers. Admin needs current Department membership and may create an internal message. Requester owner must send a visible message. Every POST creates a new message; requester messages assign adminStatus=pendente and write two audits even if already pending. A requester message to a Ticket with requesterStatus=resolvido also reopens it to nao_resolvido in the same update, with one extra alteracao_status audit (statusType=requester); admin messages never change requesterStatus. Ticket is locked before Department; all writes are atomic.",
 				"parameters": [
 					{ "$ref": "#/components/parameters/CorrelationIdHeader" },
 					{ "$ref": "#/components/parameters/PerformedByHeader" },

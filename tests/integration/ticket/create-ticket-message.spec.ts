@@ -137,7 +137,7 @@ describe('Integration: RF10 create TicketMessage', () => {
 	);
 
 	it.each(['backoffice', 'cd'] as const)(
-		'creates owner %s message with ordered duplicate media and two audits',
+		'creates owner %s message with ordered duplicate media and four audits including requester reopen',
 		async (role) => {
 			await TestDataSource.getRepository(Ticket).update(ticketId, {
 				adminStatus: 'em_andamento' as Ticket['adminStatus'],
@@ -149,7 +149,7 @@ describe('Integration: RF10 create TicketMessage', () => {
 			expect(response.body.mediaIds).toEqual(['a', 'b', 'a']);
 			const after = await state();
 			expect(after.ticket.adminStatus).toBe('pendente');
-			expect(after.ticket.requesterStatus).toBe('resolvido');
+			expect(after.ticket.requesterStatus).toBe('nao_resolvido');
 			expect(after.ticket.updatedAt.getTime()).toBeGreaterThan(
 				before.ticket.updatedAt.getTime(),
 			);
@@ -162,15 +162,87 @@ describe('Integration: RF10 create TicketMessage', () => {
 				[1, 'b'],
 				[2, 'a'],
 			]);
-			expect(after.audits).toHaveLength(3);
+			expect(after.audits).toHaveLength(4);
 			expect(after.audits.filter((audit) => audit.action === 'nova_mensagem')).toHaveLength(
 				1,
 			);
-			expect(after.audits.find((audit) => audit.action === 'alteracao_status')).toMatchObject(
-				{ authorId: owner, origin: role, statusType: 'admin', newStatus: 'pendente' },
-			);
+			expect(
+				after.audits.find(
+					(audit) => audit.action === 'alteracao_status' && audit.statusType === 'admin',
+				),
+			).toMatchObject({ authorId: owner, origin: role, newStatus: 'pendente' });
+			expect(
+				after.audits.find(
+					(audit) =>
+						audit.action === 'alteracao_status' && audit.statusType === 'requester',
+				),
+			).toMatchObject({ authorId: owner, origin: role, newStatus: 'nao_resolvido' });
 		},
 	);
+
+	it('keeps requesterStatus untouched when it is already nao_resolvido', async () => {
+		const before = await state();
+		expect(before.ticket.requesterStatus).toBe('nao_resolvido');
+		expect((await post(owner, 'cd')).status).toBe(201);
+		const after = await state();
+		expect(after.ticket.requesterStatus).toBe('nao_resolvido');
+		expect(after.audits).toHaveLength(before.audits.length + 2);
+		expect(after.audits.some((audit) => audit.statusType === 'requester')).toBe(false);
+	});
+
+	it('does not reopen requesterStatus on an admin message', async () => {
+		await TestDataSource.getRepository(Ticket).update(ticketId, {
+			requesterStatus: 'resolvido' as Ticket['requesterStatus'],
+		});
+		const before = await state();
+		expect((await post('admin-1', 'admin', body('admin', 'admin-1'))).status).toBe(201);
+		const after = await state();
+		expect(after.ticket.requesterStatus).toBe('resolvido');
+		expect(after.audits).toHaveLength(before.audits.length + 1);
+	});
+
+	it('reopens a resolved ticket end to end and exposes it in GET ticket and history', async () => {
+		const actorHeaders = (call: request.Test, actor: string, role: string) =>
+			call
+				.set('X-Correlation-ID', correlation)
+				.set('X-Performed-By', actor)
+				.set('X-Performed-By-Type', role);
+		const resolved = await actorHeaders(
+			request(buildTestApp()).post(`/api/support/tickets/${ticketId}/resolve`),
+			owner,
+			'backoffice',
+		);
+		expect(resolved.status).toBe(200);
+		expect((await state()).ticket.requesterStatus).toBe('resolvido');
+
+		expect((await post(owner, 'cd')).status).toBe(201);
+
+		const detail = await actorHeaders(
+			request(buildTestApp()).get(`/api/support/tickets/${ticketId}`),
+			owner,
+			'backoffice',
+		);
+		expect(detail.status).toBe(200);
+		expect(detail.body).toMatchObject({
+			requesterStatus: 'nao_resolvido',
+			adminStatus: 'pendente',
+		});
+
+		const history = await actorHeaders(
+			request(buildTestApp()).get(`/api/support/tickets/history?ticketId=${ticketId}`),
+			'admin-1',
+			'admin',
+		);
+		expect(history.status).toBe(200);
+		expect(
+			history.body.data.filter(
+				(item: { action: string; statusType: string; newStatus: string }) =>
+					item.action === 'alteracao_status' &&
+					item.statusType === 'requester' &&
+					item.newStatus === 'nao_resolvido',
+			),
+		).toHaveLength(1);
+	});
 
 	it('creates another message and two audits even if already pending or request is repeated', async () => {
 		const payload = body('cd', owner, true, ['x', 'x']);
