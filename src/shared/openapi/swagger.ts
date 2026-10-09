@@ -1294,6 +1294,63 @@ const swaggerOptions: swaggerJSDoc.Options = {
 				},
 			},
 			'/api/support/departments/{departmentId}': {
+				get: {
+					summary: 'Get a department by id',
+					description:
+						'Returns one department with the same shape as the list items. Inactive departments are returned too (active=false). Read only.',
+					tags: ['Departments'],
+					parameters: [
+						{ $ref: '#/components/parameters/CorrelationIdHeader' },
+						{
+							in: 'path',
+							name: 'departmentId',
+							required: true,
+							schema: { type: 'string', format: 'uuid' },
+						},
+					],
+					responses: {
+						'200': {
+							description: 'Department, active or inactive.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/Department' },
+								},
+							},
+						},
+						'400': {
+							description: 'Missing or invalid correlation.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+						'404': {
+							description: 'Department not found.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+						'422': {
+							description: 'Invalid path or forbidden request body.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+						'500': {
+							description: 'Unexpected error.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+					},
+				},
 				patch: {
 					summary: 'Update a department',
 					tags: ['Departments'],

@@ -30,6 +30,10 @@ class FakeDepartmentRepository implements IDepartmentRepository {
 		return value;
 	}
 
+	async findById(_id: string): Promise<Department | undefined> {
+		return undefined;
+	}
+
 	async findByIdForUpdate(_id: string): Promise<Department | undefined> {
 		return this.department;
 	}

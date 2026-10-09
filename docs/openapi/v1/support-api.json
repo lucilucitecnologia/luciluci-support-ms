@@ -564,6 +564,62 @@
 				"summary": "Soft delete a department",
 				"tags": ["Departments"]
 			},
+			"get": {
+				"description": "Returns one department with the same shape as the list items. Inactive departments are returned too (active=false). Read only.",
+				"parameters": [
+					{ "$ref": "#/components/parameters/CorrelationIdHeader" },
+					{
+						"in": "path",
+						"name": "departmentId",
+						"required": true,
+						"schema": { "format": "uuid", "type": "string" }
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/Department" }
+							}
+						},
+						"description": "Department, active or inactive."
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Missing or invalid correlation."
+					},
+					"404": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Department not found."
+					},
+					"422": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Invalid path or forbidden request body."
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Unexpected error."
+					}
+				},
+				"summary": "Get a department by id",
+				"tags": ["Departments"]
+			},
 			"patch": {
 				"parameters": [
 					{ "$ref": "#/components/parameters/CorrelationIdHeader" },

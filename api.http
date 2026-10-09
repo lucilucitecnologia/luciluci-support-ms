@@ -771,6 +771,11 @@ X-Correlation-ID: {{correlationId}}
 
 {}
 
+### Get department by id (includes inactive)
+GET {{baseUrl}}/api/support/departments/550e8400-e29b-41d4-a716-446655440000
+X-Correlation-ID: {{correlationId}}
+Accept: application/json
+
 ### RF03 - List active departments with defaults
 GET {{baseUrl}}/api/support/departments
 X-Correlation-ID: {{correlationId}}

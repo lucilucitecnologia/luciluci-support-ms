@@ -445,7 +445,7 @@ describe('Contract: Support bootstrap OpenAPI', () => {
 					)
 				: [],
 		);
-		expect(businessOperations).toHaveLength(14);
+		expect(businessOperations).toHaveLength(15);
 		const visibility =
 			spec.paths?.['/api/support/tickets/{ticketId}/messages/{messageId}/visibility']?.patch;
 		expect(visibility?.parameters).toEqual([

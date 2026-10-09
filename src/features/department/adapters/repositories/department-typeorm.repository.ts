@@ -33,6 +33,17 @@ export default class DepartmentTypeormRepository implements IDepartmentRepositor
 		return department;
 	}
 
+	async findById(id: string): Promise<Department | undefined> {
+		const department = await this.repository.findOne({ where: { id } });
+		if (!department) return undefined;
+
+		department.allowedUsers = await this.manager.getRepository(DepartmentAllowedUser).find({
+			where: { departmentId: id },
+			order: { position: 'ASC' },
+		});
+		return department;
+	}
+
 	async findByIdForUpdate(id: string): Promise<Department | undefined> {
 		const query = this.repository
 			.createQueryBuilder('department')

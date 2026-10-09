@@ -6,11 +6,13 @@ import UnprocessableEntityError from '../../../../shared/kernel/exceptions/unpro
 import DepartmentTypeormRepository from '../repositories/department-typeorm.repository';
 import CreateDepartmentRequestDTO from './dtos/create-department-request.dto';
 import DeleteDepartmentPathDTO from './dtos/delete-department-path.dto';
+import GetDepartmentPathDTO from './dtos/get-department-path.dto';
 import ListDepartmentsQueryDTO from './dtos/list-departments-query.dto';
 import UpdateDepartmentPathDTO from './dtos/update-department-path.dto';
 import UpdateDepartmentRequestDTO from './dtos/update-department-request.dto';
 import CreateDepartmentUseCase from '../../use-cases/create-department.use-case';
 import DeleteDepartmentUseCase from '../../use-cases/delete-department.use-case';
+import GetDepartmentUseCase from '../../use-cases/get-department.use-case';
 import ListDepartmentsUseCase from '../../use-cases/list-departments.use-case';
 import UpdateDepartmentUseCase from '../../use-cases/update-department.use-case';
 
@@ -30,6 +32,23 @@ export default function buildDepartmentController(dataSource: DataSource) {
 			const response = await new ListDepartmentsUseCase(
 				new DepartmentTypeormRepository(dataSource.manager),
 			).execute(query);
+
+			res.status(200).json(response);
+		},
+		get: async (req: Request, res: Response): Promise<void> => {
+			const { departmentId } = await validateDto(GetDepartmentPathDTO, req.params);
+			if (req.body !== undefined) {
+				throw new UnprocessableEntityError('validation_error', [
+					{
+						field: 'body',
+						code: 'forbidden',
+						message: 'Request body is not allowed.',
+					},
+				]);
+			}
+			const response = await new GetDepartmentUseCase(
+				new DepartmentTypeormRepository(dataSource.manager),
+			).execute(departmentId);
 
 			res.status(200).json(response);
 		},
