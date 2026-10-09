@@ -213,10 +213,7 @@ async function main() {
 			const assertDelta = (before, after, messages, media, audits) => {
 				assert.equal(after.messages.length - before.messages.length, messages);
 				assert.equal(after.media.length - before.media.length, media);
-				const auditDelta = after.audits.length - before.audits.length;
-				if (Array.isArray(audits))
-					assert.ok(audits.includes(auditDelta), `audits ${auditDelta}`);
-				else assert.equal(auditDelta, audits);
+				assert.equal(after.audits.length - before.audits.length, audits);
 				assert.ok(after.ticket[0].updated_at > before.ticket[0].updated_at);
 			};
 			let previous = await snapshot();
@@ -629,29 +626,15 @@ async function main() {
 					headers: headers('owner-1', 'cd'),
 				});
 			const beforeResolve = await snapshot();
-			assert.equal(beforeResolve.ticket[0].requester_status, 'nao_resolvido');
-			// The lock order decides the outcome: message first (3 audits, resolvido) or
-			// resolve first (4 audits, the message reopens to nao_resolvido).
 			const combined = await concurrent(
 				'RF10_x_RF08',
 				[() => post(ticket.id, 'owner-1', 'cd', body('owner-1', 'cd')), rf08],
 				1,
-				[3, 4],
+				beforeResolve.ticket[0].requester_status === 'resolvido' ? 2 : 3,
 				[201, 200],
 			);
 			assert.equal(combined.ticket[0].admin_status, 'pendente');
-			const combinedAudits = combined.audits.length - beforeResolve.audits.length;
-			assert.equal(
-				combined.ticket[0].requester_status,
-				combinedAudits === 3 ? 'resolvido' : 'nao_resolvido',
-			);
-			const reopens = combined.audits.filter(
-				(a) =>
-					a.action === 'alteracao_status' &&
-					a.status_type === 'requester' &&
-					a.new_status === 'nao_resolvido',
-			);
-			assert.equal(reopens.length, combinedAudits === 4 ? 1 : 0);
+			assert.equal(combined.ticket[0].requester_status, 'resolvido');
 			console.log(
 				'RF10 PostgreSQL compiled process, atomicity, ACL, audit cardinality, rollback and concurrency proof OK',
 			);

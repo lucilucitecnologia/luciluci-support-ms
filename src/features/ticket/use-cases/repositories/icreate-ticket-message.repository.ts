@@ -8,10 +8,6 @@ export default interface ICreateTicketMessageRepository {
 	createMessage(message: TicketMessage): Promise<void>;
 	createMedia(media: TicketMessageMedia[]): Promise<void>;
 	touchAfterAdminMessage(ticketId: string, updatedAt: Date): Promise<void>;
-	updateAfterRequesterMessage(
-		ticketId: string,
-		updatedAt: Date,
-		reopenRequesterStatus: boolean,
-	): Promise<void>;
+	updateAfterRequesterMessage(ticketId: string, updatedAt: Date): Promise<void>;
 	createAuditLog(auditLog: TicketAuditLog): Promise<void>;
 }

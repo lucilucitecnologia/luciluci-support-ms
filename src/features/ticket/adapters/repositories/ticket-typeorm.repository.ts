@@ -24,7 +24,6 @@ import IListTicketHistoryRepository, {
 	ListTicketHistoryFilters,
 } from '../../use-cases/repositories/ilist-ticket-history.repository';
 import TicketAdminStatus from '../../entities/enums/ticket-admin-status.enum';
-import TicketRequesterStatus from '../../entities/enums/ticket-requester-status.enum';
 import DepartmentAllowedUser from '../../../department/entities/department-allowed-user.entity';
 
 export default class TicketTypeormRepository
@@ -148,14 +147,9 @@ export default class TicketTypeormRepository
 		await this.ticketRepository.update(ticketId, { updatedAt });
 	}
 
-	async updateAfterRequesterMessage(
-		ticketId: string,
-		updatedAt: Date,
-		reopenRequesterStatus: boolean,
-	): Promise<void> {
+	async updateAfterRequesterMessage(ticketId: string, updatedAt: Date): Promise<void> {
 		await this.ticketRepository.update(ticketId, {
 			adminStatus: TicketAdminStatus.Pendente,
-			...(reopenRequesterStatus && { requesterStatus: TicketRequesterStatus.NaoResolvido }),
 			updatedAt,
 		});
 	}

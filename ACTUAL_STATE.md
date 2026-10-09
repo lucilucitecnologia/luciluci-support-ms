@@ -1,19 +1,5 @@
 # ACTUAL_STATE
 
-## Mudança local — RF10 reabre requesterStatus
-
-Em RF10, mensagem de solicitante (`backoffice|cd`) em Ticket com
-`requesterStatus=resolvido` passa o status para `nao_resolvido` no mesmo
-UPDATE que já define `adminStatus=pendente`, com uma terceira auditoria
-(`alteracao_status`, `statusType=requester`, `newStatus=nao_resolvido`, após
-`nova_mensagem` e `alteracao_status` admin). Se já era `nao_resolvido`, nada
-muda (2 auditorias). Mensagem de admin não toca o `requesterStatus`. Motivo:
-quem resolve e depois responde reabre o chamado e não pode ficar
-`pendente`+`resolvido`. Isso diverge do PRD 9.2 ("independência dos status",
-sem reset automático); ver [DRIFT_REPORT.md](DRIFT_REPORT.md). Local, sem
-commit, deploy ou prova PostgreSQL (`proof:rf10:postgres` ajustado, não
-executado). O submódulo `luciluci-docs` não foi alterado.
-
 ## Checkpoint de readiness/UAT — sem deploy
 
 `main=origin/main=5caa7713ab40b64e9b499cf5bcbaf84645415200` integra a

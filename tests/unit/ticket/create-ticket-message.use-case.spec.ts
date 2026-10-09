@@ -8,13 +8,13 @@ import ICreateTicketMessageRepository from '../../../src/features/ticket/use-cas
 const before = new Date('2026-09-25T10:00:00.000Z');
 const after = new Date('2026-09-25T10:00:01.000Z');
 
-function fixture(status = 'em_andamento', requesterStatus = 'resolvido') {
+function fixture(status = 'em_andamento') {
 	const ticket = Object.assign(new Ticket(), {
 		id: 'f57d57a6-3b94-4d4b-bf09-73c127e02c45',
 		departmentId: 'a19cf070-ea36-41df-9382-e44d541f8003',
 		requesterId: 'owner',
 		adminStatus: status,
-		requesterStatus,
+		requesterStatus: 'resolvido',
 		updatedAt: before,
 	});
 	const department = Object.assign(new Department(), {
@@ -58,14 +58,6 @@ function fixture(status = 'em_andamento', requesterStatus = 'resolvido') {
 		() => `f57d57a6-3b94-4d4b-bf09-73c127e02c4${counter++}`,
 	);
 	return { ticket, department, departments, tickets, calls, useCase };
-}
-
-function auditSummary(f: ReturnType<typeof fixture>) {
-	return f.tickets.createAuditLog.mock.calls.map(([audit]) => [
-		audit.action,
-		audit.statusType,
-		audit.newStatus,
-	]);
 }
 
 describe('Unit: RF10 create TicketMessage', () => {
@@ -120,7 +112,7 @@ describe('Unit: RF10 create TicketMessage', () => {
 	it.each(['backoffice', 'cd'] as const)(
 		'creates requester %s message and two audits even when pending',
 		async (role) => {
-			const f = fixture('pendente', 'nao_resolvido');
+			const f = fixture('pendente');
 			const response = await f.useCase.execute(
 				f.ticket.id,
 				{
@@ -140,75 +132,20 @@ describe('Unit: RF10 create TicketMessage', () => {
 			]);
 			expect(f.calls).toEqual(['ticket', 'message', 'media', 'status', 'audit', 'audit']);
 			expect(f.departments.findByIdForUpdate).not.toHaveBeenCalled();
-			expect(f.tickets.updateAfterRequesterMessage).toHaveBeenCalledWith(
-				f.ticket.id,
-				after,
-				false,
-			);
-			expect(auditSummary(f)).toEqual([
+			expect(f.tickets.updateAfterRequesterMessage).toHaveBeenCalledWith(f.ticket.id, after);
+			expect(
+				f.tickets.createAuditLog.mock.calls.map(([audit]) => [
+					audit.action,
+					audit.statusType,
+					audit.newStatus,
+				]),
+			).toEqual([
 				['nova_mensagem', null, null],
 				['alteracao_status', 'admin', 'pendente'],
 			]);
-			expect(f.ticket.requesterStatus).toBe('nao_resolvido');
+			expect(f.ticket.requesterStatus).toBe('resolvido');
 		},
 	);
-
-	it.each(['backoffice', 'cd'] as const)(
-		'reopens requesterStatus on a %s message to a resolved ticket with three audits',
-		async (role) => {
-			const f = fixture('pendente', 'resolvido');
-			await f.useCase.execute(
-				f.ticket.id,
-				{
-					message: 'Still broken',
-					type: role,
-					authorId: 'owner',
-					isVisibleToRequester: true,
-				},
-				{ id: 'owner', role },
-			);
-			expect(f.calls).toEqual([
-				'ticket',
-				'message',
-				'media',
-				'status',
-				'audit',
-				'audit',
-				'audit',
-			]);
-			expect(f.tickets.updateAfterRequesterMessage).toHaveBeenCalledWith(
-				f.ticket.id,
-				after,
-				true,
-			);
-			expect(auditSummary(f)).toEqual([
-				['nova_mensagem', null, null],
-				['alteracao_status', 'admin', 'pendente'],
-				['alteracao_status', 'requester', 'nao_resolvido'],
-			]);
-			const reopen = f.tickets.createAuditLog.mock.calls[2][0];
-			expect(reopen).toMatchObject({ authorId: 'owner', origin: role, datetime: after });
-		},
-	);
-
-	it('keeps moving a cancelled ticket to pendente while reopening requesterStatus', async () => {
-		const f = fixture('cancelado', 'resolvido');
-		await f.useCase.execute(
-			f.ticket.id,
-			{ message: 'Reopen', type: 'cd', authorId: 'owner', isVisibleToRequester: true },
-			{ id: 'owner', role: 'cd' },
-		);
-		expect(f.tickets.updateAfterRequesterMessage).toHaveBeenCalledWith(
-			f.ticket.id,
-			after,
-			true,
-		);
-		expect(auditSummary(f)).toEqual([
-			['nova_mensagem', null, null],
-			['alteracao_status', 'admin', 'pendente'],
-			['alteracao_status', 'requester', 'nao_resolvido'],
-		]);
-	});
 
 	it('denies admin without membership and requester without ownership before writes', async () => {
 		const admin = fixture();

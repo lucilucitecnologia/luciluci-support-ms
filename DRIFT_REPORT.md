@@ -1,15 +1,5 @@
 # DRIFT_REPORT
 
-## Divergência deliberada PRD x RF10 — reabertura do requesterStatus
-
-O PRD (9.2, independência dos status) não prevê reset automático do
-`requesterStatus`. RF10 passou a fazê-lo apenas quando o solicitante envia
-mensagem em Ticket `resolvido`: `requesterStatus` volta a `nao_resolvido` com
-auditoria `alteracao_status/requester`. Motivo: reabertura por resposta, sem
-a qual o Ticket ficava `pendente`+`resolvido` sem caminho de reversão. O
-PRD/notes/TDD em `luciluci-docs` ainda não refletem a regra (submódulo não
-alterado; atualização e commit à parte). Bloqueios por status continuam no BFF.
-
 ## W1 integrada sem drift funcional novo
 
 A PR #17 integrou a seed W1 em `main` no merge `1c1348d`. A CI remota
