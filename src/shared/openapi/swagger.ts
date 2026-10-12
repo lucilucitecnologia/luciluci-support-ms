@@ -1195,7 +1195,15 @@ const swaggerOptions: swaggerJSDoc.Options = {
 							in: 'query',
 							name: 'type',
 							required: false,
-							schema: { $ref: '#/components/schemas/DepartmentType' },
+							explode: true,
+							style: 'form',
+							description:
+								'Repeat the parameter to match any of the given types (OR), e.g. type=backoffice&type=todos. A single value keeps exact matching.',
+							schema: {
+								type: 'array',
+								items: { $ref: '#/components/schemas/DepartmentType' },
+								minItems: 1,
+							},
 						},
 						{
 							in: 'query',

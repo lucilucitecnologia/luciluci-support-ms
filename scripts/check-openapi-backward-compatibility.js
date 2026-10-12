@@ -25,6 +25,20 @@ function compareRequestSchemas(baselineSchema, candidateSchema, path, errors) {
 
 	const baselineTypes = normalizeTypes(baselineSchema.type);
 	const candidateTypes = normalizeTypes(candidateSchema.type);
+
+	// A scalar widened to an array of the same scalar (repeatable query param) still accepts the
+	// single-value form on the wire, so compare the baseline against the array items.
+	if (
+		baselineTypes.length > 0 &&
+		!baselineTypes.includes('array') &&
+		candidateTypes.includes('array') &&
+		!candidateTypes.some((typeName) => baselineTypes.includes(typeName)) &&
+		candidateSchema.items
+	) {
+		compareRequestSchemas(baselineSchema, candidateSchema.items, path, errors);
+		return;
+	}
+
 	const missingTypes = baselineTypes.filter((typeName) => !candidateTypes.includes(typeName));
 
 	if (baselineTypes.length > 0 && missingTypes.length > 0) {

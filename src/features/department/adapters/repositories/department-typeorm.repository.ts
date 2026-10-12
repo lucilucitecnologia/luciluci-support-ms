@@ -83,7 +83,7 @@ export default class DepartmentTypeormRepository implements IDepartmentRepositor
 			.take(input.size);
 
 		if (input.type !== undefined) {
-			query.andWhere('department.type = :type', { type: input.type });
+			query.andWhere('department.type IN (:...types)', { types: input.type });
 		}
 
 		const [departments, total] = await query.getManyAndCount();

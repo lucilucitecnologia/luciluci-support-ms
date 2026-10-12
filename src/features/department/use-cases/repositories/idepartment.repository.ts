@@ -2,7 +2,7 @@ import Department from '../../entities/department.entity';
 import DepartmentType from '../../entities/enums/department-type.enum';
 
 export interface FindActiveDepartmentsPageInput {
-	type?: DepartmentType;
+	type?: DepartmentType[];
 	page: number;
 	size: number;
 }

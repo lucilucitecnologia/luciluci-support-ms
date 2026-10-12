@@ -411,10 +411,17 @@
 				"parameters": [
 					{ "$ref": "#/components/parameters/CorrelationIdHeader" },
 					{
+						"description": "Repeat the parameter to match any of the given types (OR), e.g. type=backoffice&type=todos. A single value keeps exact matching.",
+						"explode": true,
 						"in": "query",
 						"name": "type",
 						"required": false,
-						"schema": { "$ref": "#/components/schemas/DepartmentType" }
+						"schema": {
+							"items": { "$ref": "#/components/schemas/DepartmentType" },
+							"minItems": 1,
+							"type": "array"
+						},
+						"style": "form"
 					},
 					{
 						"in": "query",

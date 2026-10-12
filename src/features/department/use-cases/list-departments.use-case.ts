@@ -3,7 +3,7 @@ import { DepartmentResponse, toDepartmentResponse } from './department-response'
 import IDepartmentRepository from './repositories/idepartment.repository';
 
 export interface ListDepartmentsInput {
-	type?: DepartmentType;
+	type?: DepartmentType[];
 	page: number;
 	size: number;
 }

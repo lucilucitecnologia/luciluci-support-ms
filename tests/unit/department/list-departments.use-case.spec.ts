@@ -69,7 +69,13 @@ describe('ListDepartmentsUseCase', () => {
 		});
 		await expect(
 			validateDto(ListDepartmentsQueryDTO, { type: 'cd', page: '2', size: '10' }),
-		).resolves.toEqual({ type: 'cd', page: 2, size: 10 });
+		).resolves.toEqual({ type: ['cd'], page: 2, size: 10 });
+		await expect(
+			validateDto(ListDepartmentsQueryDTO, { type: ['backoffice', 'todos', 'backoffice'] }),
+		).resolves.toEqual({ type: ['backoffice', 'todos'], page: 1, size: 20 });
+		await expect(
+			validateDto(ListDepartmentsQueryDTO, { type: ['cd', 'admin'] }),
+		).rejects.toThrow();
 	});
 
 	it('maps complete departments, preserves memberships, and calculates total pages', async () => {
@@ -84,13 +90,13 @@ describe('ListDepartmentsUseCase', () => {
 			total: 21,
 		});
 		const response = await new ListDepartmentsUseCase(repository).execute({
-			type: DepartmentType.Todos,
+			type: [DepartmentType.Todos],
 			page: 2,
 			size: 20,
 		});
 
 		expect(repository.findInput).toEqual({
-			type: DepartmentType.Todos,
+			type: [DepartmentType.Todos],
 			page: 2,
 			size: 20,
 		});

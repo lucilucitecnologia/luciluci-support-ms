@@ -100,6 +100,18 @@ describe('Integration: RF03 list departments', () => {
 		expect(response.body.pagination).toEqual({ page: 1, size: 20, total: 1, totalPages: 1 });
 	});
 
+	it('filters by repeated type params with OR semantics and dedupes values', async () => {
+		await seedDepartments();
+		const response = await get('?type=backoffice&type=todos&type=backoffice');
+
+		expect(response.status).toBe(200);
+		expect(response.body.data.map((item: { id: string }) => item.id)).toEqual([
+			ids.alpha,
+			ids.betaFirst,
+		]);
+		expect(response.body.pagination).toEqual({ page: 1, size: 20, total: 2, totalPages: 1 });
+	});
+
 	it('paginates deterministically and preserves totals beyond the last page', async () => {
 		await seedDepartments();
 		const first = await get('?page=1&size=1');
@@ -137,6 +149,8 @@ describe('Integration: RF03 list departments', () => {
 		['size over max', '?size=101'],
 		['size decimal', '?size=1.5'],
 		['invalid type', '?type=admin'],
+		['invalid type among valid', '?type=cd&type=admin'],
+		['empty type', '?type='],
 		['limit alias', '?limit=20'],
 		['pageSize alias', '?pageSize=20'],
 		['offset alias', '?offset=0'],

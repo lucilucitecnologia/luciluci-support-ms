@@ -1,5 +1,29 @@
 # ACTUAL_STATE
 
+## Filtro `type` multi-valor em `GET /api/support/departments` — develop, local
+
+Na branch `develop`, o filtro `type` da listagem RF03 passou a aceitar
+parâmetro repetido (`?type=backoffice&type=todos`) com semântica OR
+(`department.type IN (...)`). Valor único mantém igualdade exata; valores
+repetidos são deduplicados; valor inválido ou `type=` vazio retorna `422
+validation_error`. `todos` continua sendo um valor comum do enum, não curinga,
+e `Department.type` segue sem governar autorização. Nenhuma migration, evento
+ou auditoria foi criada; paginação, ordem e `total` seguem o conjunto filtrado.
+
+Este é um ajuste de contrato do RF03 feito fora do Support 0.15 (`14efcdf`
+permanece no gitlink): o contrato canônico em `luciluci-docs` e o PRD/TDD
+**não** foram atualizados e ainda descrevem `type` como valor único. A
+extensão deve ser propagada ao repositório canônico antes de ser tratada como
+contrato congelado. O `scripts/check-openapi-backward-compatibility.js` passou a
+aceitar escalar → array do mesmo escalar em parâmetros de request (o valor
+único segue aceito no wire).
+
+Evidência local: `tsc --noEmit`, ESLint nos diretórios de department, testes
+unit/contract (23 suítes, 122 testes), integration de `list-departments` (25
+testes), `openapi:check` e checagem de compatibilidade contra a baseline
+anterior passaram. Não houve commit, push, PR, CI, prova PostgreSQL completa
+nem deploy neste ajuste.
+
 ## Checkpoint de readiness/UAT — sem deploy
 
 `main=origin/main=5caa7713ab40b64e9b499cf5bcbaf84645415200` integra a

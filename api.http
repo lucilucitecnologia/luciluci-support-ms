@@ -786,6 +786,11 @@ GET {{baseUrl}}/api/support/departments?type=cd
 X-Correlation-ID: {{correlationId}}
 Accept: application/json
 
+### RF03 - Filter by multiple types (repeated param, OR)
+GET {{baseUrl}}/api/support/departments?type=backoffice&type=todos
+X-Correlation-ID: {{correlationId}}
+Accept: application/json
+
 ### RF03 - Second page with size one
 GET {{baseUrl}}/api/support/departments?page=2&size=1
 X-Correlation-ID: {{correlationId}}
