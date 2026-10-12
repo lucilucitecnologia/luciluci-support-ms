@@ -85,6 +85,7 @@ describe('Integration: RF10 create TicketMessage', () => {
 				departmentId,
 				priority: 'alta',
 				origin: 'backoffice',
+				originRefId: 'ref-1',
 				message: { message: 'Initial' },
 			});
 		expect(created.status).toBe(201);

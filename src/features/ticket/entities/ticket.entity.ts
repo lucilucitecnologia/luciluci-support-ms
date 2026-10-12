@@ -12,6 +12,7 @@ export default class Ticket {
 	departmentId!: string;
 	priority!: TicketPriority;
 	origin!: TicketOrigin;
+	originRefId!: string;
 	adminStatus!: TicketAdminStatus;
 	requesterStatus!: TicketRequesterStatus;
 	createdAt!: Date;

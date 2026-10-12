@@ -255,6 +255,7 @@ async function main() {
 					departmentId,
 					priority: 'alta',
 					origin: 'cd',
+					originRefId: 'ref-1',
 					message: {
 						message: 'Mensagem inicial RF05',
 						mediaIds: ['media-A', 'media-A', 'media-B'],
@@ -278,6 +279,7 @@ async function main() {
 				'id',
 				'number',
 				'origin',
+				'originRefId',
 				'priority',
 				'requesterId',
 				'requesterStatus',

@@ -33,6 +33,7 @@ type TicketSeed = {
 	createdAt: string;
 	status?: TicketAdminStatus;
 	origin?: TicketOrigin;
+	originRefId?: string;
 	priority?: TicketPriority;
 };
 
@@ -61,6 +62,7 @@ async function seedTicket(input: TicketSeed): Promise<Ticket> {
 		departmentId: input.departmentId,
 		priority: input.priority ?? TicketPriority.Alta,
 		origin: input.origin ?? TicketOrigin.Backoffice,
+		originRefId: input.originRefId ?? 'ref-1',
 		adminStatus: input.status ?? TicketAdminStatus.Pendente,
 		requesterStatus: TicketRequesterStatus.NaoResolvido,
 		createdAt: timestamp,
@@ -91,6 +93,7 @@ describe('Integration: RF07a/RF07b ticket listings', () => {
 			departmentId: departmentA,
 			createdAt: '2026-09-01T00:00:00.000Z',
 			origin: TicketOrigin.Cd,
+			originRefId: 'cd-9',
 		});
 		await seedTicket({
 			number: 2,
@@ -131,6 +134,7 @@ describe('Integration: RF07a/RF07b ticket listings', () => {
 				'departmentId',
 				'requesterId',
 				'origin',
+				'originRefId',
 				'priority',
 				'status',
 			].sort(),
@@ -177,6 +181,31 @@ describe('Integration: RF07a/RF07b ticket listings', () => {
 		expect(unmatched.body.data).toEqual([]);
 	});
 
+	it('filters by originRefId with exact match inside the actor scope', async () => {
+		const admin = await list(`admin/${adminA}`, adminA, 'admin', '?originRefId=cd-9');
+		expect(admin.status).toBe(200);
+		expect(admin.body.data.map((item: { number: number }) => item.number)).toEqual([1]);
+		expect(admin.body.data[0].originRefId).toBe('cd-9');
+		expect(admin.body.pagination.total).toBe(1);
+
+		const requester = await list(
+			`requester/${requesterA}`,
+			requesterA,
+			'backoffice',
+			'?originRefId=ref-1',
+		);
+		expect(requester.status).toBe(200);
+		expect(requester.body.data.map((item: { number: number }) => item.number)).toEqual([2]);
+
+		const outsideScope = await list(
+			`requester/${requesterA}`,
+			requesterA,
+			'backoffice',
+			'?originRefId=unknown-ref',
+		);
+		expect(outsideScope.body.pagination).toMatchObject({ total: 0, totalPages: 0 });
+	});
+
 	it('uses UTC civil-day boundaries and accepts either bound alone', async () => {
 		const end = await list(`admin/${adminA}`, adminA, 'admin', '?endDate=04/09/2026');
 		expect(end.body.data.map((item: { number: number }) => item.number)).toEqual([2, 1]);
@@ -208,6 +237,8 @@ describe('Integration: RF07a/RF07b ticket listings', () => {
 		['?number=0', 'number'],
 		['?status=wrong', 'status'],
 		['?origin=admin', 'origin'],
+		['?originRefId=', 'originRefId'],
+		['?originRefId=a&originRefId=b', 'originRefId'],
 		['?departmentId=wrong', 'departmentId'],
 		['?priority=critical', 'priority'],
 		['?startDate=31/02/2026', 'startDate'],

@@ -12,6 +12,7 @@ export interface ListedTicket {
 	departmentId: string;
 	requesterId: string;
 	origin: string;
+	originRefId: string;
 	priority: string;
 	status: string;
 }
@@ -30,6 +31,7 @@ function toListedTicket(ticket: Ticket): ListedTicket {
 		departmentId: ticket.departmentId,
 		requesterId: ticket.requesterId,
 		origin: ticket.origin,
+		originRefId: ticket.originRefId,
 		priority: ticket.priority,
 		status: ticket.adminStatus,
 	};

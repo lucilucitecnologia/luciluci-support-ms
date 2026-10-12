@@ -14,6 +14,7 @@ const TicketSchema = new EntitySchema<Ticket>({
 		departmentId: { name: 'department_id', type: String },
 		priority: { type: String },
 		origin: { type: String },
+		originRefId: { name: 'origin_ref_id', type: String },
 		adminStatus: { name: 'admin_status', type: String },
 		requesterStatus: { name: 'requester_status', type: String },
 		createdAt: { name: 'created_at', type: Date },

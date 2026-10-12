@@ -1,5 +1,36 @@
 # ACTUAL_STATE
 
+## `originRefId` obrigatório em Ticket — develop, local
+
+Na branch `develop`, `Ticket` ganhou `originRefId`: referência opaca à entidade
+por trás da `origin` (ex.: id do CD quando `origin=cd`, id do consultor quando
+`origin=backoffice`; distinto de `requesterId`). É **obrigatório** na criação
+(`POST /api/support/tickets`, RF05, string não vazia), imutável e informativo:
+não participa de autorização. Aparece em todas as respostas de Ticket (RF05,
+RF06, RF08, RF09) e no item das listagens RF07a/RF07b, que passam a aceitar o
+filtro `originRefId` (igualdade exata, valor único, combinado por AND com os
+demais filtros e com a ACL; vazio ou repetido retorna `422`).
+
+Persistência: coluna `tickets.origin_ref_id varchar NOT NULL` (migration
+`1768020000000-AddTicketOriginRefId`), sem backfill: a base ainda não possuía
+tickets, e a migration falha se houver linhas. A seed W1 passou a gerar
+`seed-<origin>-ref-NN` determinístico e o validador confere o valor. RF12/RF13
+não expõem o campo.
+
+**Mudança incompatível**: o campo novo obrigatório no request do RF05 e nas
+respostas quebra o check `openapi:compat` do CI contra a baseline anterior
+(`property 'originRefId' became newly required`). O script não foi enfraquecido;
+é uma quebra intencional que exige aceite explícito antes de integrar em `main`.
+
+Limites: ajuste fora do Support 0.15 (`14efcdf`); o contrato canônico em
+`luciluci-docs` e o PRD/TDD **não** foram atualizados e precisam receber esta
+mudança antes de ser tratada como contrato congelado. Evidência local:
+`tsc --noEmit`, ESLint, `openapi:check` e suíte completa (38 suítes, 359
+testes, SQLite de teste) passaram. Os scripts `prove-*-postgres.js` e
+`proof:s1:image` foram ajustados (bodies/chaves) mas **não** executados, e a
+migration não foi exercitada em PostgreSQL; não houve commit, CI, prova
+PostgreSQL nem deploy neste ajuste.
+
 ## Filtro `type` multi-valor em `GET /api/support/departments` — develop, local
 
 Na branch `develop`, o filtro `type` da listagem RF03 passou a aceitar

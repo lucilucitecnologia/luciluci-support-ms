@@ -12,6 +12,7 @@ export interface TicketResponse {
 	departmentId: string;
 	priority: TicketPriority;
 	origin: TicketOrigin;
+	originRefId: string;
 	adminStatus: TicketAdminStatus;
 	requesterStatus: TicketRequesterStatus;
 	createdAt: string;
@@ -27,6 +28,7 @@ export function toTicketResponse(ticket: Ticket): TicketResponse {
 		departmentId: ticket.departmentId,
 		priority: ticket.priority,
 		origin: ticket.origin,
+		originRefId: ticket.originRefId,
 		adminStatus: ticket.adminStatus,
 		requesterStatus: ticket.requesterStatus,
 		createdAt: ticket.createdAt.toISOString(),

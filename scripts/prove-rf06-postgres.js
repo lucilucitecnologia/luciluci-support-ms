@@ -153,6 +153,7 @@ async function main() {
 					departmentId: current.id,
 					priority: 'alta',
 					origin: 'backoffice',
+					originRefId: 'ref-1',
 					message: { message: 'Initial.' },
 				}),
 			});

@@ -168,6 +168,7 @@ describe('Contract: Support bootstrap OpenAPI', () => {
 			'departmentId',
 			'priority',
 			'origin',
+			'originRefId',
 			'message',
 		]);
 		expect(createTicketSchema.properties?.priority).toEqual({
@@ -257,7 +258,7 @@ describe('Contract: Support bootstrap OpenAPI', () => {
 		});
 		const ticketDetailSchema = spec.components?.schemas?.TicketDetail as OpenAPIV3.SchemaObject;
 		expect(ticketDetailSchema.additionalProperties).toBe(false);
-		expect(ticketDetailSchema.required).toHaveLength(11);
+		expect(ticketDetailSchema.required).toHaveLength(12);
 		expect(ticketDetailSchema.properties?.requesterStatus).toEqual({
 			type: 'string',
 			enum: ['nao_resolvido', 'resolvido'],
@@ -288,6 +289,7 @@ describe('Contract: Support bootstrap OpenAPI', () => {
 					'endDate',
 					'status',
 					'origin',
+					'originRefId',
 					'departmentId',
 					'priority',
 					'page',
@@ -485,6 +487,7 @@ describe('Contract: Support bootstrap OpenAPI', () => {
 			'departmentId',
 			'requesterId',
 			'origin',
+			'originRefId',
 			'priority',
 			'status',
 		]);

@@ -68,6 +68,7 @@ describe('Integration: RF12 list Ticket messages', () => {
 			departmentId,
 			priority: 'alta' as Ticket['priority'],
 			origin: 'backoffice' as Ticket['origin'],
+			originRefId: 'ref-1',
 			adminStatus: 'pendente' as Ticket['adminStatus'],
 			requesterStatus: 'nao_resolvido' as Ticket['requesterStatus'],
 			createdAt: date,

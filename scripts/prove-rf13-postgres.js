@@ -166,6 +166,7 @@ async function main() {
 				departmentId,
 				priority: 'alta',
 				origin,
+				originRefId: 'ref-1',
 				message: { message: 'Initial' },
 			});
 			assert.equal(response.status, 201);

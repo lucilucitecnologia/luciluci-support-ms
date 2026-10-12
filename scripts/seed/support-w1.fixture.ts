@@ -354,6 +354,7 @@ export function buildW1Fixture(): W1Fixture {
 			department_id: deptId,
 			priority: scenario.priority,
 			origin,
+			origin_ref_id: 'seed-' + origin + '-ref-' + String(ordinal).padStart(2, '0'),
 			admin_status: scenario.adminStatus,
 			requester_status: scenario.requesterResolved ? 'resolvido' : 'nao_resolvido',
 			created_at: createdAt,

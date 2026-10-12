@@ -158,6 +158,7 @@ async function main() {
 						departmentId,
 						priority,
 						origin,
+						originRefId: 'ref-1',
 						message: { message: 'Initial.' },
 					}),
 				});
@@ -234,6 +235,7 @@ async function main() {
 					'departmentId',
 					'requesterId',
 					'origin',
+					'originRefId',
 					'priority',
 					'status',
 				].sort(),

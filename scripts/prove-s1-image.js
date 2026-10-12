@@ -167,6 +167,7 @@ async function main() {
 				departmentId: createdBody.id,
 				priority: 'alta',
 				origin: 'backoffice',
+				originRefId: 'ref-1',
 				message: { message: 'Image RF05 initial message.' },
 			}),
 		});
@@ -314,6 +315,7 @@ async function main() {
 					'departmentId',
 					'priority',
 					'origin',
+					'originRefId',
 					'adminStatus',
 					'requesterStatus',
 					'createdAt',

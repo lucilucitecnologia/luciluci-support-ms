@@ -731,6 +731,13 @@ X-Performed-By: {{adminId}}
 X-Performed-By-Type: admin
 Accept: application/json
 
+### RF07b - Filter by originRefId (e.g. CD id)
+GET {{baseUrl}}/api/support/tickets/admin/{{adminId}}?originRefId=cd-42
+X-Correlation-ID: {{correlationId}}
+X-Performed-By: {{adminId}}
+X-Performed-By-Type: admin
+Accept: application/json
+
 ### RF07b - Invalid query alias, returns 422
 GET {{baseUrl}}/api/support/tickets/admin/{{adminId}}?limit=10
 X-Correlation-ID: {{correlationId}}
@@ -854,10 +861,26 @@ X-Correlation-ID: {{correlationId}}
   "departmentId": "550e8400-e29b-41d4-a716-446655440000",
   "priority": "alta",
   "origin": "backoffice",
+  "originRefId": "ref-1",
   "message": {
     "message": "Não consigo acessar o painel.",
     "mediaIds": ["media-2", "media-1", "media-2"]
   }
+}
+
+### RF05 - Create ticket with originRefId (e.g. CD id)
+POST {{baseUrl}}/api/support/tickets
+Content-Type: application/json
+X-Correlation-ID: {{correlationId}}
+
+{
+  "subject": "Divergência de estoque",
+  "requesterId": "uid-requester-2",
+  "departmentId": "550e8400-e29b-41d4-a716-446655440000",
+  "priority": "media",
+  "origin": "cd",
+  "originRefId": "cd-42",
+  "message": { "message": "Quantidade física diferente do sistema." }
 }
 
 ### RF05 - Create ticket without mediaIds
@@ -871,6 +894,7 @@ X-Correlation-ID: {{correlationId}}
   "departmentId": "550e8400-e29b-41d4-a716-446655440000",
   "priority": "media",
   "origin": "cd",
+  "originRefId": "ref-1",
   "message": {
     "message": "O pedido ainda não entrou em separação."
   }
@@ -887,6 +911,7 @@ X-Correlation-ID: {{correlationId}}
   "departmentId": "550e8400-e29b-41d4-a716-446655440099",
   "priority": "baixa",
   "origin": "backoffice",
+  "originRefId": "ref-1",
   "message": { "message": "Tentativa bloqueada." }
 }
 
@@ -901,6 +926,7 @@ X-Correlation-ID: {{correlationId}}
   "departmentId": "550e8400-e29b-41d4-a716-446655440098",
   "priority": "baixa",
   "origin": "backoffice",
+  "originRefId": "ref-1",
   "message": { "message": "Tentativa sem Department." }
 }
 
@@ -915,6 +941,7 @@ X-Correlation-ID: {{correlationId}}
   "departmentId": "550e8400-e29b-41d4-a716-446655440000",
   "priority": "critica",
   "origin": "backoffice",
+  "originRefId": "ref-1",
   "message": { "message": "Payload inválido." }
 }
 
@@ -943,6 +970,7 @@ X-Correlation-ID: {{correlationId}}
   "departmentId": "550e8400-e29b-41d4-a716-446655440000",
   "priority": "alta",
   "origin": "backoffice",
+  "originRefId": "ref-1",
   "message": { "message": "Payload inválido." }
 }
 
@@ -957,6 +985,7 @@ X-Correlation-ID: {{correlationId}}
   "departmentId": "550e8400-e29b-41d4-a716-446655440000",
   "priority": "alta",
   "origin": "backoffice",
+  "originRefId": "ref-1",
   "message": { "message": "   " }
 }
 
@@ -971,6 +1000,7 @@ X-Correlation-ID: {{correlationId}}
   "departmentId": "550e8400-e29b-41d4-a716-446655440000",
   "priority": "urgente",
   "origin": "backoffice",
+  "originRefId": "ref-1",
   "message": { "message": "Payload inválido." },
   "unexpected": true
 }
@@ -985,6 +1015,7 @@ Content-Type: application/json
   "departmentId": "550e8400-e29b-41d4-a716-446655440000",
   "priority": "alta",
   "origin": "backoffice",
+  "originRefId": "ref-1",
   "message": { "message": "Payload bloqueado antes da transação." }
 }
 
@@ -999,6 +1030,7 @@ X-Correlation-ID: invalid
   "departmentId": "550e8400-e29b-41d4-a716-446655440000",
   "priority": "alta",
   "origin": "backoffice",
+  "originRefId": "ref-1",
   "message": { "message": "Payload bloqueado antes da transação." }
 }
 

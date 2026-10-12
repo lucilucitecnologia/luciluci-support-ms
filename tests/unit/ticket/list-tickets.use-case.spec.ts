@@ -17,7 +17,7 @@ describe('Unit: RF07 listing contract', () => {
 		expect(() => parseListTicketsQuery('?startDate=29/02/2025', false)).toThrow();
 	});
 
-	it('limits the projection to nine fields and keeps the repository scope', async () => {
+	it('limits the projection to ten fields and keeps the repository scope', async () => {
 		const ticket = Object.assign(new Ticket(), {
 			id: 'ed4fa86e-1536-4f02-a0c5-cbcf92a865c6',
 			number: 42,
@@ -25,6 +25,7 @@ describe('Unit: RF07 listing contract', () => {
 			departmentId: 'b46ff00b-8632-4222-b276-1d5a503c1dc0',
 			requesterId: 'requester-1',
 			origin: TicketOrigin.Cd,
+			originRefId: 'ref-1',
 			priority: TicketPriority.Urgente,
 			adminStatus: TicketAdminStatus.Resolvido,
 			subject: 'Private subject',
@@ -48,6 +49,7 @@ describe('Unit: RF07 listing contract', () => {
 					departmentId: ticket.departmentId,
 					requesterId: 'requester-1',
 					origin: 'cd',
+					originRefId: 'ref-1',
 					priority: 'urgente',
 					status: 'resolvido',
 				},

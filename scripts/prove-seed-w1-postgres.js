@@ -357,6 +357,7 @@ async function main() {
 					departmentId: W1_FIXTURE.departments[0].id,
 					priority: 'baixa',
 					origin: 'backoffice',
+					originRefId: 'ref-1',
 					message: { message: 'W1 proof only' },
 				}),
 			});

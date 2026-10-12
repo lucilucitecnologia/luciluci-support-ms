@@ -21,6 +21,7 @@ export interface CreateTicketInput {
 	departmentId: string;
 	priority: TicketPriority;
 	origin: TicketOrigin;
+	originRefId: string;
 	message: {
 		message: string;
 		mediaIds?: string[];
@@ -56,6 +57,7 @@ export default class CreateTicketUseCase {
 		ticket.departmentId = input.departmentId;
 		ticket.priority = input.priority;
 		ticket.origin = input.origin;
+		ticket.originRefId = input.originRefId;
 		ticket.adminStatus = TicketAdminStatus.Pendente;
 		ticket.requesterStatus = TicketRequesterStatus.NaoResolvido;
 		ticket.createdAt = timestamp;

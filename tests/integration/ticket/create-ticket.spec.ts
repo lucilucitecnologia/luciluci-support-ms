@@ -23,6 +23,7 @@ const validBody = {
 	departmentId,
 	priority: 'alta',
 	origin: 'backoffice',
+	originRefId: 'ref-1',
 	message: {
 		message: 'Não consigo acessar o painel.',
 		mediaIds: ['media-2', 'media-1', 'media-2'],
@@ -72,6 +73,7 @@ describe('Integration: RF05 create ticket', () => {
 				'departmentId',
 				'priority',
 				'origin',
+				'originRefId',
 				'adminStatus',
 				'requesterStatus',
 				'createdAt',
@@ -86,6 +88,7 @@ describe('Integration: RF05 create ticket', () => {
 			departmentId,
 			priority: 'alta',
 			origin: 'backoffice',
+			originRefId: 'ref-1',
 			adminStatus: 'pendente',
 			requesterStatus: 'nao_resolvido',
 		});
@@ -133,6 +136,17 @@ describe('Integration: RF05 create ticket', () => {
 		expect(response.status).toBe(201);
 		expect(response.body.number).toBe(2);
 		expect(await TestDataSource.getRepository(TicketMessageMedia).count()).toBe(3);
+	});
+
+	it('stores and returns the optional originRefId', async () => {
+		const response = await post({ ...validBody, originRefId: 'cd-42' });
+
+		expect(response.status).toBe(201);
+		expect(response.body.originRefId).toBe('cd-42');
+		const stored = await TestDataSource.getRepository(Ticket).findOneByOrFail({
+			id: response.body.id,
+		});
+		expect(stored.originRefId).toBe('cd-42');
 	});
 
 	it('does not require performed-by or idempotency headers and ignores neither', async () => {
@@ -190,6 +204,9 @@ describe('Integration: RF05 create ticket', () => {
 		['non-v4 departmentId', { ...validBody, departmentId: 'department-1' }],
 		['invalid priority', { ...validBody, priority: 'critica' }],
 		['invalid origin', { ...validBody, origin: 'app' }],
+		['missing originRefId', (({ originRefId: _originRefId, ...body }) => body)(validBody)],
+		['blank originRefId', { ...validBody, originRefId: '  ' }],
+		['non-string originRefId', { ...validBody, originRefId: 42 }],
 		['missing message', (({ message: _message, ...body }) => body)(validBody)],
 		['blank message', { ...validBody, message: { message: ' ' } }],
 		['empty message', { ...validBody, message: { message: '' } }],

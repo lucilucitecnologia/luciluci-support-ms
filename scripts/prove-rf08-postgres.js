@@ -171,6 +171,7 @@ async function main() {
 						departmentId: department.id,
 						priority: 'alta',
 						origin: 'backoffice',
+						originRefId: 'ref-1',
 						message: { message: 'Initial.' },
 					}),
 				});
@@ -229,6 +230,7 @@ async function main() {
 					'departmentId',
 					'priority',
 					'origin',
+					'originRefId',
 					'adminStatus',
 					'requesterStatus',
 					'createdAt',

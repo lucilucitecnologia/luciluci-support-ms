@@ -74,6 +74,7 @@ describe('Integration: RF11 admin Message visibility', () => {
 				departmentId,
 				priority: 'alta',
 				origin: 'backoffice',
+				originRefId: 'ref-1',
 				message: { message: 'Initial' },
 			});
 		expect(ticket.status).toBe(201);

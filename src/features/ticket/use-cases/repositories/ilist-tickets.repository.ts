@@ -9,6 +9,7 @@ export interface ListTicketsFilters {
 	endExclusive?: Date;
 	status?: TicketAdminStatus;
 	origin?: TicketOrigin;
+	originRefId?: string;
 	departmentId?: string;
 	priority?: TicketPriority;
 	requesterId?: string;

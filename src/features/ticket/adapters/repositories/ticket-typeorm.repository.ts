@@ -108,6 +108,10 @@ export default class TicketTypeormRepository
 			query.andWhere('ticket.adminStatus = :status', { status: filters.status });
 		if (filters.origin !== undefined)
 			query.andWhere('ticket.origin = :origin', { origin: filters.origin });
+		if (filters.originRefId !== undefined)
+			query.andWhere('ticket.originRefId = :originRefId', {
+				originRefId: filters.originRefId,
+			});
 		if (filters.departmentId !== undefined)
 			query.andWhere('ticket.departmentId = :departmentId', {
 				departmentId: filters.departmentId,

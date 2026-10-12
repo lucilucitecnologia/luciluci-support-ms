@@ -43,6 +43,10 @@
 					"id": { "format": "uuid", "type": "string" },
 					"number": { "minimum": 1, "type": "integer" },
 					"origin": { "$ref": "#/components/schemas/TicketOrigin" },
+					"originRefId": {
+						"description": "Opaque id of the entity behind the origin (e.g. CD id or consultant id). Required on creation, immutable, informational only; not used for authorization. Filterable on RF07a/RF07b.",
+						"type": "string"
+					},
 					"priority": { "$ref": "#/components/schemas/TicketPriority" },
 					"requesterId": { "type": "string" },
 					"requesterStatus": { "enum": ["nao_resolvido"], "type": "string" },
@@ -57,6 +61,7 @@
 					"departmentId",
 					"priority",
 					"origin",
+					"originRefId",
 					"adminStatus",
 					"requesterStatus",
 					"createdAt",
@@ -97,6 +102,7 @@
 					"departmentId": { "format": "uuid", "type": "string" },
 					"message": { "$ref": "#/components/schemas/CreateInitialTicketMessageRequest" },
 					"origin": { "$ref": "#/components/schemas/TicketOrigin" },
+					"originRefId": { "pattern": ".*\\S.*", "type": "string" },
 					"priority": { "$ref": "#/components/schemas/TicketPriority" },
 					"requesterId": { "pattern": ".*\\S.*", "type": "string" },
 					"subject": { "pattern": ".*\\S.*", "type": "string" }
@@ -107,6 +113,7 @@
 					"departmentId",
 					"priority",
 					"origin",
+					"originRefId",
 					"message"
 				],
 				"type": "object"
@@ -174,6 +181,10 @@
 					"id": { "format": "uuid", "type": "string" },
 					"number": { "minimum": 1, "type": "integer" },
 					"origin": { "$ref": "#/components/schemas/TicketOrigin" },
+					"originRefId": {
+						"description": "Opaque id of the entity behind the origin (e.g. CD id or consultant id). Required on creation, immutable, informational only; not used for authorization. Filterable on RF07a/RF07b.",
+						"type": "string"
+					},
 					"priority": { "$ref": "#/components/schemas/TicketPriority" },
 					"requesterId": { "type": "string" },
 					"requesterStatus": { "enum": ["nao_resolvido"], "type": "string" },
@@ -188,6 +199,7 @@
 					"departmentId",
 					"priority",
 					"origin",
+					"originRefId",
 					"adminStatus",
 					"requesterStatus",
 					"createdAt",
@@ -208,6 +220,10 @@
 					"id": { "format": "uuid", "type": "string" },
 					"number": { "minimum": 1, "type": "integer" },
 					"origin": { "$ref": "#/components/schemas/TicketOrigin" },
+					"originRefId": {
+						"description": "Opaque id of the entity behind the origin (e.g. CD id or consultant id). Required on creation, immutable, informational only; not used for authorization. Filterable on RF07a/RF07b.",
+						"type": "string"
+					},
 					"priority": { "$ref": "#/components/schemas/TicketPriority" },
 					"requesterId": { "type": "string" },
 					"requesterStatus": { "enum": ["nao_resolvido", "resolvido"], "type": "string" },
@@ -222,6 +238,7 @@
 					"departmentId",
 					"priority",
 					"origin",
+					"originRefId",
 					"adminStatus",
 					"requesterStatus",
 					"createdAt",
@@ -276,6 +293,10 @@
 					"id": { "format": "uuid", "type": "string" },
 					"number": { "minimum": 1, "type": "integer" },
 					"origin": { "$ref": "#/components/schemas/TicketOrigin" },
+					"originRefId": {
+						"description": "Opaque id of the entity behind the origin (e.g. CD id or consultant id). Required on creation, immutable, informational only; not used for authorization. Filterable on RF07a/RF07b.",
+						"type": "string"
+					},
 					"priority": { "$ref": "#/components/schemas/TicketPriority" },
 					"requesterId": { "type": "string" },
 					"status": { "$ref": "#/components/schemas/TicketAdminStatus" },
@@ -289,6 +310,7 @@
 					"departmentId",
 					"requesterId",
 					"origin",
+					"originRefId",
 					"priority",
 					"status"
 				],
@@ -1214,6 +1236,11 @@
 					},
 					{
 						"in": "query",
+						"name": "originRefId",
+						"schema": { "pattern": ".*\\S.*", "type": "string" }
+					},
+					{
+						"in": "query",
 						"name": "departmentId",
 						"schema": { "format": "uuid", "type": "string" }
 					},
@@ -1403,6 +1430,11 @@
 						"in": "query",
 						"name": "origin",
 						"schema": { "$ref": "#/components/schemas/TicketOrigin" }
+					},
+					{
+						"in": "query",
+						"name": "originRefId",
+						"schema": { "pattern": ".*\\S.*", "type": "string" }
 					},
 					{
 						"in": "query",

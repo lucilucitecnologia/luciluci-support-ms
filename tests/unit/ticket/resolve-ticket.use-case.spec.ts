@@ -18,6 +18,7 @@ function ticket(): Ticket {
 		departmentId: 'a19cf070-ea36-41df-9382-e44d541f8003',
 		priority: TicketPriority.Alta,
 		origin: TicketOrigin.Backoffice,
+		originRefId: 'ref-1',
 		adminStatus: TicketAdminStatus.Pendente,
 		requesterStatus: TicketRequesterStatus.NaoResolvido,
 		createdAt: originalTime,

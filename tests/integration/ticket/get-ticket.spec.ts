@@ -66,6 +66,7 @@ describe('Integration: RF09 get ticket by ID', () => {
 				departmentId,
 				priority: 'alta',
 				origin: 'backoffice',
+				originRefId: 'ref-1',
 				message: { message: 'Initial.' },
 			});
 		expect(response.status).toBe(201);
@@ -91,6 +92,7 @@ describe('Integration: RF09 get ticket by ID', () => {
 				'departmentId',
 				'priority',
 				'origin',
+				'originRefId',
 				'adminStatus',
 				'requesterStatus',
 				'createdAt',

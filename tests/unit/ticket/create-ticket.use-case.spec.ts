@@ -96,6 +96,7 @@ function input() {
 		departmentId,
 		priority: TicketPriority.Alta,
 		origin: TicketOrigin.Backoffice,
+		originRefId: 'ref-1',
 		message: {
 			message: 'Não consigo acessar o painel.',
 			mediaIds: ['media-2', 'media-1', 'media-2'],
@@ -122,6 +123,7 @@ describe('CreateTicketUseCase', () => {
 			departmentId,
 			priority: 'alta',
 			origin: 'backoffice',
+			originRefId: 'ref-1',
 			adminStatus: 'pendente',
 			requesterStatus: 'nao_resolvido',
 			createdAt: timestamp.toISOString(),
@@ -170,6 +172,20 @@ describe('CreateTicketUseCase', () => {
 		).execute(value);
 
 		expect(repository.media).toEqual([]);
+	});
+
+	it('persists and returns originRefId', async () => {
+		const repository = new FakeTicketRepository();
+		let idIndex = 0;
+		const response = await new CreateTicketUseCase(
+			new FakeDepartmentRepository(activeDepartment()),
+			repository,
+			() => timestamp,
+			() => ids[idIndex++],
+		).execute({ ...input(), originRefId: 'cd-42' });
+
+		expect(response.originRefId).toBe('cd-42');
+		expect(repository.ticket?.originRefId).toBe('cd-42');
 	});
 
 	it('rejects an unknown department before any ticket write', async () => {

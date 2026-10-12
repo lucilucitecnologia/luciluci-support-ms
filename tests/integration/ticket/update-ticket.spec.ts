@@ -71,6 +71,7 @@ describe('Integration: RF06 update ticket', () => {
 				departmentId: currentId,
 				priority: 'alta',
 				origin: 'backoffice',
+				originRefId: 'ref-1',
 				message: { message: 'Falha inicial.' },
 			});
 		expect(created.status).toBe(201);
@@ -92,6 +93,7 @@ describe('Integration: RF06 update ticket', () => {
 				'departmentId',
 				'priority',
 				'origin',
+				'originRefId',
 				'adminStatus',
 				'requesterStatus',
 				'createdAt',

@@ -222,6 +222,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						'departmentId',
 						'priority',
 						'origin',
+						'originRefId',
 						'message',
 					],
 					properties: {
@@ -230,6 +231,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						departmentId: { type: 'string', format: 'uuid' },
 						priority: { $ref: '#/components/schemas/TicketPriority' },
 						origin: { $ref: '#/components/schemas/TicketOrigin' },
+						originRefId: { type: 'string', pattern: '.*\\S.*' },
 						message: {
 							$ref: '#/components/schemas/CreateInitialTicketMessageRequest',
 						},
@@ -260,6 +262,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						'departmentId',
 						'priority',
 						'origin',
+						'originRefId',
 						'adminStatus',
 						'requesterStatus',
 						'createdAt',
@@ -273,6 +276,11 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						departmentId: { type: 'string', format: 'uuid' },
 						priority: { $ref: '#/components/schemas/TicketPriority' },
 						origin: { $ref: '#/components/schemas/TicketOrigin' },
+						originRefId: {
+							type: 'string',
+							description:
+								'Opaque id of the entity behind the origin (e.g. CD id or consultant id). Required on creation, immutable, informational only; not used for authorization. Filterable on RF07a/RF07b.',
+						},
 						adminStatus: { type: 'string', enum: ['pendente'] },
 						requesterStatus: { type: 'string', enum: ['nao_resolvido'] },
 						createdAt: { type: 'string', format: 'date-time' },
@@ -290,6 +298,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						'departmentId',
 						'priority',
 						'origin',
+						'originRefId',
 						'adminStatus',
 						'requesterStatus',
 						'createdAt',
@@ -303,6 +312,11 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						departmentId: { type: 'string', format: 'uuid' },
 						priority: { $ref: '#/components/schemas/TicketPriority' },
 						origin: { $ref: '#/components/schemas/TicketOrigin' },
+						originRefId: {
+							type: 'string',
+							description:
+								'Opaque id of the entity behind the origin (e.g. CD id or consultant id). Required on creation, immutable, informational only; not used for authorization. Filterable on RF07a/RF07b.',
+						},
 						adminStatus: { $ref: '#/components/schemas/TicketAdminStatus' },
 						requesterStatus: { type: 'string', enum: ['nao_resolvido'] },
 						createdAt: { type: 'string', format: 'date-time' },
@@ -320,6 +334,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						'departmentId',
 						'priority',
 						'origin',
+						'originRefId',
 						'adminStatus',
 						'requesterStatus',
 						'createdAt',
@@ -333,6 +348,11 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						departmentId: { type: 'string', format: 'uuid' },
 						priority: { $ref: '#/components/schemas/TicketPriority' },
 						origin: { $ref: '#/components/schemas/TicketOrigin' },
+						originRefId: {
+							type: 'string',
+							description:
+								'Opaque id of the entity behind the origin (e.g. CD id or consultant id). Required on creation, immutable, informational only; not used for authorization. Filterable on RF07a/RF07b.',
+						},
 						adminStatus: { $ref: '#/components/schemas/TicketAdminStatus' },
 						requesterStatus: {
 							type: 'string',
@@ -353,6 +373,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						'departmentId',
 						'requesterId',
 						'origin',
+						'originRefId',
 						'priority',
 						'status',
 					],
@@ -364,6 +385,11 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						departmentId: { type: 'string', format: 'uuid' },
 						requesterId: { type: 'string' },
 						origin: { $ref: '#/components/schemas/TicketOrigin' },
+						originRefId: {
+							type: 'string',
+							description:
+								'Opaque id of the entity behind the origin (e.g. CD id or consultant id). Required on creation, immutable, informational only; not used for authorization. Filterable on RF07a/RF07b.',
+						},
 						priority: { $ref: '#/components/schemas/TicketPriority' },
 						status: { $ref: '#/components/schemas/TicketAdminStatus' },
 					},
@@ -1013,6 +1039,11 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						},
 						{
 							in: 'query',
+							name: 'originRefId',
+							schema: { type: 'string', pattern: '.*\\S.*' },
+						},
+						{
+							in: 'query',
 							name: 'departmentId',
 							schema: { type: 'string', format: 'uuid' },
 						},
@@ -1112,6 +1143,11 @@ const swaggerOptions: swaggerJSDoc.Options = {
 							in: 'query',
 							name: 'origin',
 							schema: { $ref: '#/components/schemas/TicketOrigin' },
+						},
+						{
+							in: 'query',
+							name: 'originRefId',
+							schema: { type: 'string', pattern: '.*\\S.*' },
 						},
 						{
 							in: 'query',

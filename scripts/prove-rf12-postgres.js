@@ -162,6 +162,7 @@ async function main() {
 			departmentId: department.id,
 			priority: 'alta',
 			origin: 'backoffice',
+			originRefId: 'ref-1',
 			message: { message: 'Initial', mediaIds: ['initial-media'] },
 		});
 		assert.equal(createTicket.status, 201);

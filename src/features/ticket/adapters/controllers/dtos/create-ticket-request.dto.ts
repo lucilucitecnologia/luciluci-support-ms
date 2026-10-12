@@ -43,6 +43,10 @@ export default class CreateTicketRequestDTO {
 	@IsEnum(TicketOrigin)
 	origin!: TicketOrigin;
 
+	@IsString()
+	@Matches(/\S/, { message: 'originRefId must contain a non-whitespace character' })
+	originRefId!: string;
+
 	@IsDefined()
 	@ValidateNested()
 	@Type(() => CreateInitialMessageRequestDTO)

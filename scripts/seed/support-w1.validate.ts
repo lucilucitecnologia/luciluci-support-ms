@@ -125,6 +125,11 @@ export function validateW1Fixture(fixture: W1Fixture): void {
 		);
 		const origin = scenario.requester.startsWith('seed-cd-') ? 'cd' : 'backoffice';
 		same(field(ticket, 'origin'), origin, 'Ticket origin');
+		same(
+			field(ticket, 'origin_ref_id'),
+			'seed-' + origin + '-ref-' + String(index + 1).padStart(2, '0'),
+			'Ticket origin ref',
+		);
 		const messages = fixture.ticket_messages.filter((row) => row.ticket_id === ticketId);
 		same(messages.length, scenario.followUp ? 3 : 2, 'messages per Ticket');
 		const initial = messages[0];
