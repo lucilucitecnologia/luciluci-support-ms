@@ -174,7 +174,7 @@ async function main() {
 			).rows[0].count,
 			'1',
 		);
-		assert.equal((await catalog.query('SELECT count(*) FROM migrations')).rows[0].count, '3');
+		assert.equal((await catalog.query('SELECT count(*) FROM migrations')).rows[0].count, '4');
 		await catalog.end();
 
 		const child = spawn(npmCommand, ['run', 'start'], {
@@ -294,6 +294,8 @@ async function main() {
 		}
 		if (child.exitCode && child.exitCode !== 0)
 			throw new Error(`Compiled process exited unexpectedly: ${logs}`);
+		// A migration mais recente (origin_ref_id) é revertida antes das tabelas de Ticket.
+		run(['run', 'migration:revert:dist'], env);
 		run(['run', 'migration:revert:dist'], env);
 		const reverted = new Client(connection);
 		await reverted.connect();

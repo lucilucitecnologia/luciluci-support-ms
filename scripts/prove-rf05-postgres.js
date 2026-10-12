@@ -203,6 +203,8 @@ async function main() {
 		).rows[0];
 		assert.deepEqual([sequence.start_value, sequence.increment_by], ['1', '1']);
 
+		// A migration mais recente (origin_ref_id) é revertida antes das tabelas de Ticket.
+		run(['run', 'migration:revert:dist'], env);
 		run(['run', 'migration:revert:dist'], env);
 		assert.deepEqual(
 			(
