@@ -84,7 +84,7 @@ async function main(): Promise<void> {
 			await verification.release();
 		}
 		console.log(
-			'SEED_W1_CREATED departments=6 memberships=7 tickets=16 messages=44 media=8 audits=80',
+			'SEED_W1_CREATED departments=6 memberships=7 tickets=16 messages=44 media=8 audits=98',
 		);
 	} finally {
 		if (initialized) await dataSource.destroy();

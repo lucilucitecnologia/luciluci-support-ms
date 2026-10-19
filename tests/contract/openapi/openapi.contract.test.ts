@@ -30,9 +30,11 @@ describe('Contract: Support bootstrap OpenAPI', () => {
 			'/api/support/tickets/history',
 			'/api/support/tickets/requester/{requesterId}',
 			'/api/support/tickets/{ticketId}',
+			'/api/support/tickets/{ticketId}/approve',
+			'/api/support/tickets/{ticketId}/cancel',
 			'/api/support/tickets/{ticketId}/messages',
 			'/api/support/tickets/{ticketId}/messages/{messageId}/visibility',
-			'/api/support/tickets/{ticketId}/resolve',
+			'/api/support/tickets/{ticketId}/reject',
 			'/health',
 			'/metrics',
 		]);
@@ -231,37 +233,54 @@ describe('Contract: Support bootstrap OpenAPI', () => {
 				'500': expect.any(Object),
 			}),
 		);
-		const resolveTicket = spec.paths?.['/api/support/tickets/{ticketId}/resolve']?.post;
-		expect(resolveTicket?.requestBody).toBeUndefined();
-		expect(resolveTicket?.parameters).toEqual([
-			{ $ref: '#/components/parameters/CorrelationIdHeader' },
-			{ $ref: '#/components/parameters/PerformedByHeader' },
-			{ $ref: '#/components/parameters/PerformedByTypeHeader' },
-			expect.objectContaining({ in: 'path', name: 'ticketId', required: true }),
-		]);
-		expect(Object.keys(resolveTicket?.responses ?? {}).sort()).toEqual([
-			'200',
-			'400',
-			'403',
-			'404',
-			'422',
-			'500',
-		]);
+		for (const [action, hasBody] of [
+			['approve', false],
+			['reject', true],
+			['cancel', true],
+		] as const) {
+			const operation = spec.paths?.[`/api/support/tickets/{ticketId}/${action}`]?.post;
+			if (hasBody) {
+				expect(operation?.requestBody).toEqual(
+					expect.objectContaining({ required: false }),
+				);
+			} else {
+				expect(operation?.requestBody).toBeUndefined();
+			}
+			expect(operation?.parameters).toEqual([
+				{ $ref: '#/components/parameters/CorrelationIdHeader' },
+				{ $ref: '#/components/parameters/PerformedByHeader' },
+				{ $ref: '#/components/parameters/PerformedByTypeHeader' },
+				expect.objectContaining({ in: 'path', name: 'ticketId', required: true }),
+			]);
+			expect(Object.keys(operation?.responses ?? {}).sort()).toEqual([
+				'200',
+				'400',
+				'403',
+				'404',
+				'422',
+				'500',
+			]);
+		}
+		expect(spec.paths?.['/api/support/tickets/{ticketId}/resolve']).toBeUndefined();
+		expect(spec.components?.schemas?.RequesterTicketStatusRequest).toEqual(
+			expect.objectContaining({ additionalProperties: false }),
+		);
 		expect(spec.components?.schemas?.UpdateTicketRequest).toEqual(
 			expect.objectContaining({
 				additionalProperties: false,
 				minProperties: 1,
 			}),
 		);
-		expect(ticketSchema.properties?.adminStatus).toEqual({
-			$ref: '#/components/schemas/TicketAdminStatus',
+		expect(ticketSchema.properties?.status).toEqual({
+			$ref: '#/components/schemas/TicketStatus',
 		});
+		expect(ticketSchema.properties?.adminStatus).toBeUndefined();
+		expect(ticketSchema.properties?.requesterStatus).toBeUndefined();
 		const ticketDetailSchema = spec.components?.schemas?.TicketDetail as OpenAPIV3.SchemaObject;
 		expect(ticketDetailSchema.additionalProperties).toBe(false);
-		expect(ticketDetailSchema.required).toHaveLength(12);
-		expect(ticketDetailSchema.properties?.requesterStatus).toEqual({
-			type: 'string',
-			enum: ['nao_resolvido', 'resolvido'],
+		expect(ticketDetailSchema.required).toHaveLength(11);
+		expect(ticketDetailSchema.properties?.status).toEqual({
+			$ref: '#/components/schemas/TicketStatus',
 		});
 		for (const [path, pathId, includesRequesterFilter] of [
 			['/api/support/tickets/requester/{requesterId}', 'requesterId', false],
@@ -430,7 +449,6 @@ describe('Contract: Support bootstrap OpenAPI', () => {
 			'authorId',
 			'origin',
 			'action',
-			'statusType',
 			'newStatus',
 		]);
 		expect(Object.keys(historyItem.properties ?? {})).toEqual(historyItem.required);
@@ -447,7 +465,7 @@ describe('Contract: Support bootstrap OpenAPI', () => {
 					)
 				: [],
 		);
-		expect(businessOperations).toHaveLength(15);
+		expect(businessOperations).toHaveLength(17);
 		const visibility =
 			spec.paths?.['/api/support/tickets/{ticketId}/messages/{messageId}/visibility']?.patch;
 		expect(visibility?.parameters).toEqual([

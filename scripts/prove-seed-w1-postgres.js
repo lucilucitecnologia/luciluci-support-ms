@@ -295,8 +295,8 @@ async function main() {
 			);
 			assert.equal(ownerHistory.status, 200);
 			assert.equal(adminHistory.status, 200);
-			assert.equal(ownerHistory.body.pagination.total, 5);
-			assert.equal(adminHistory.body.pagination.total, 6);
+			assert.equal(ownerHistory.body.pagination.total, 4);
+			assert.equal(adminHistory.body.pagination.total, 5);
 			assert.ok(
 				ownerHistory.body.data.some(
 					(row) =>
@@ -321,8 +321,8 @@ async function main() {
 				adminTickets: 6,
 				ownerMessages: 2,
 				adminMessages: 3,
-				ownerHistory: 5,
-				adminHistory: 6,
+				ownerHistory: 4,
+				adminHistory: 5,
 			};
 		} catch (error) {
 			throw new Error(String(error) + '\nCompiled process logs: ' + logs.slice(-3000));

@@ -203,7 +203,8 @@ async function main() {
 		).rows[0];
 		assert.deepEqual([sequence.start_value, sequence.increment_by], ['1', '1']);
 
-		// A migration mais recente (origin_ref_id) é revertida antes das tabelas de Ticket.
+		// As migrations mais recentes (status único e origin_ref_id) são revertidas antes das tabelas de Ticket.
+		run(['run', 'migration:revert:dist'], env);
 		run(['run', 'migration:revert:dist'], env);
 		run(['run', 'migration:revert:dist'], env);
 		assert.deepEqual(
@@ -275,7 +276,6 @@ async function main() {
 			const ticket = await json(response);
 			assert.match(ticket.id, /^[0-9a-f-]{36}$/i);
 			assert.deepEqual(Object.keys(ticket).sort(), [
-				'adminStatus',
 				'createdAt',
 				'departmentId',
 				'id',
@@ -284,13 +284,14 @@ async function main() {
 				'originRefId',
 				'priority',
 				'requesterId',
-				'requesterStatus',
+				'status',
 				'subject',
 				'updatedAt',
 			]);
 			assert.equal(ticket.number, 1);
-			assert.equal(ticket.adminStatus, 'pendente');
-			assert.equal(ticket.requesterStatus, 'nao_resolvido');
+			assert.equal(ticket.status, 'pendente');
+			assert.equal(ticket.adminStatus, undefined);
+			assert.equal(ticket.requesterStatus, undefined);
 			assert.equal(ticket.createdAt, ticket.updatedAt);
 			const persistedTicket = (
 				await inspection.query('SELECT * FROM tickets WHERE id = $1', [ticket.id])
@@ -301,10 +302,9 @@ async function main() {
 					persistedTicket.department_id,
 					persistedTicket.priority,
 					persistedTicket.origin,
-					persistedTicket.admin_status,
-					persistedTicket.requester_status,
+					persistedTicket.status,
 				],
-				[1, department.id, 'alta', 'cd', 'pendente', 'nao_resolvido'],
+				[1, department.id, 'alta', 'cd', 'pendente'],
 			);
 			const message = (
 				await inspection.query('SELECT * FROM ticket_messages WHERE ticket_id = $1', [
@@ -331,7 +331,7 @@ async function main() {
 			assert.deepEqual(
 				(
 					await inspection.query(
-						'SELECT author_id, origin, action, status_type, new_status FROM ticket_audit_logs WHERE ticket_id = $1',
+						'SELECT author_id, origin, action, new_status FROM ticket_audit_logs WHERE ticket_id = $1',
 						[ticket.id],
 					)
 				).rows,
@@ -340,7 +340,6 @@ async function main() {
 						author_id: 'uid-requester-rf05',
 						origin: 'cd',
 						action: 'criacao_ticket',
-						status_type: null,
 						new_status: null,
 					},
 				],

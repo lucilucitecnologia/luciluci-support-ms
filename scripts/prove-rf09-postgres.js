@@ -196,8 +196,7 @@ async function main() {
 				'priority',
 				'origin',
 				'originRefId',
-				'adminStatus',
-				'requesterStatus',
+				'status',
 				'createdAt',
 				'updatedAt',
 			].sort();

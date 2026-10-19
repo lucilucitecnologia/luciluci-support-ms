@@ -1,5 +1,5 @@
 import UnprocessableEntityError from '../../../../../shared/kernel/exceptions/unprocessable-entity.error';
-import TicketAdminStatus from '../../../entities/enums/ticket-admin-status.enum';
+import TicketStatus from '../../../entities/enums/ticket-status.enum';
 import TicketOrigin from '../../../entities/enums/ticket-origin.enum';
 import TicketPriority from '../../../entities/enums/ticket-priority.enum';
 import { ListTicketsFilters } from '../../../use-cases/repositories/ilist-tickets.repository';
@@ -102,7 +102,7 @@ export function parseListTicketsQuery(
 				: positiveInteger('number', values.get('number')),
 		startInclusive,
 		endExclusive,
-		status: enumValue('status', values.get('status'), Object.values(TicketAdminStatus)),
+		status: enumValue('status', values.get('status'), Object.values(TicketStatus)),
 		origin: enumValue('origin', values.get('origin'), Object.values(TicketOrigin)),
 		originRefId: values.get('originRefId'),
 		departmentId,

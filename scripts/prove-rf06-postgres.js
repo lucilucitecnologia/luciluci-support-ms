@@ -170,7 +170,7 @@ async function main() {
 			const readAudits = async () =>
 				(
 					await inspection.query(
-						'SELECT action,origin,author_id,status_type,new_status FROM ticket_audit_logs WHERE ticket_id=$1 ORDER BY datetime',
+						'SELECT action,origin,author_id,new_status FROM ticket_audit_logs WHERE ticket_id=$1 ORDER BY datetime',
 						[ticket.id],
 					)
 				).rows;
@@ -182,7 +182,7 @@ async function main() {
 			const beforeNoop = await readTicket();
 			response = await patch({
 				priority: 'urgente',
-				adminStatus: 'pendente',
+				status: 'pendente',
 				departmentId: current.id,
 			});
 			assert.equal(response.status, 200);
@@ -192,14 +192,13 @@ async function main() {
 			);
 			assert.equal((await readAudits()).length, 1);
 
-			response = await patch({ adminStatus: 'resolvido' });
+			response = await patch({ status: 'resolvido' });
 			assert.equal(response.status, 200);
-			assert.equal((await response.json()).adminStatus, 'resolvido');
+			assert.equal((await response.json()).status, 'resolvido');
 			assert.deepEqual((await readAudits())[1], {
 				action: 'alteracao_status',
 				origin: 'admin',
 				author_id: 'admin-1',
-				status_type: 'admin',
 				new_status: 'resolvido',
 			});
 			response = await patch({ departmentId: target.id }, 'requester-1', 'cd');
@@ -211,13 +210,17 @@ async function main() {
 			assert.equal(response.status, 403);
 			response = await patch({ requesterStatus: 'resolvido' });
 			assert.equal(response.status, 422);
+			const beforeForbidden = await readTicket();
+			response = await patch({ status: 'cancelado' }, 'requester-1', 'cd');
+			assert.equal(response.status, 403);
+			assert.deepEqual(await readTicket(), beforeForbidden);
 
 			await inspection.query(`CREATE FUNCTION rf06_reject_audit() RETURNS trigger LANGUAGE plpgsql AS $$
 				BEGIN RAISE EXCEPTION 'RF06 controlled audit failure'; END $$;
 				CREATE TRIGGER rf06_reject_audit BEFORE INSERT ON ticket_audit_logs
 				FOR EACH ROW EXECUTE FUNCTION rf06_reject_audit();`);
 			const beforeFailure = await readTicket();
-			response = await patch({ priority: 'baixa', adminStatus: 'finalizado' });
+			response = await patch({ priority: 'baixa', status: 'finalizado' });
 			assert.equal(response.status, 500);
 			assert.deepEqual(await readTicket(), beforeFailure);
 			assert.equal((await readAudits()).length, 2);
@@ -248,7 +251,7 @@ async function main() {
 			await lockClient.query('BEGIN');
 			await lockClient.query('UPDATE departments SET active=false WHERE id=$1', [third.id]);
 			finished = false;
-			const blockedTarget = patch({ departmentId: third.id, adminStatus: 'finalizado' }).then(
+			const blockedTarget = patch({ departmentId: third.id, status: 'finalizado' }).then(
 				(item) => {
 					finished = true;
 					return item;

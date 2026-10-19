@@ -4,10 +4,9 @@ import Department from '../../../src/features/department/entities/department.ent
 import DepartmentAllowedUser from '../../../src/features/department/entities/department-allowed-user.entity';
 import DepartmentType from '../../../src/features/department/entities/enums/department-type.enum';
 import Ticket from '../../../src/features/ticket/entities/ticket.entity';
-import TicketAdminStatus from '../../../src/features/ticket/entities/enums/ticket-admin-status.enum';
+import TicketStatus from '../../../src/features/ticket/entities/enums/ticket-status.enum';
 import TicketOrigin from '../../../src/features/ticket/entities/enums/ticket-origin.enum';
 import TicketPriority from '../../../src/features/ticket/entities/enums/ticket-priority.enum';
-import TicketRequesterStatus from '../../../src/features/ticket/entities/enums/ticket-requester-status.enum';
 import TicketAuditLog from '../../../src/features/ticket/entities/ticket-audit-log.entity';
 import TestDataSource from '../../../src/shared/infrastructure/database/data-source-test';
 import {
@@ -31,7 +30,7 @@ type TicketSeed = {
 	requesterId: string;
 	departmentId: string;
 	createdAt: string;
-	status?: TicketAdminStatus;
+	status?: TicketStatus;
 	origin?: TicketOrigin;
 	originRefId?: string;
 	priority?: TicketPriority;
@@ -63,8 +62,7 @@ async function seedTicket(input: TicketSeed): Promise<Ticket> {
 		priority: input.priority ?? TicketPriority.Alta,
 		origin: input.origin ?? TicketOrigin.Backoffice,
 		originRefId: input.originRefId ?? 'ref-1',
-		adminStatus: input.status ?? TicketAdminStatus.Pendente,
-		requesterStatus: TicketRequesterStatus.NaoResolvido,
+		status: input.status ?? TicketStatus.Pendente,
 		createdAt: timestamp,
 		updatedAt: timestamp,
 	});
@@ -100,7 +98,7 @@ describe('Integration: RF07a/RF07b ticket listings', () => {
 			requesterId: requesterA,
 			departmentId: departmentB,
 			createdAt: '2026-09-04T23:59:59.999Z',
-			status: TicketAdminStatus.Resolvido,
+			status: TicketStatus.Resolvido,
 			priority: TicketPriority.Urgente,
 		});
 		await seedTicket({
@@ -108,7 +106,7 @@ describe('Integration: RF07a/RF07b ticket listings', () => {
 			requesterId: requesterB,
 			departmentId: departmentA,
 			createdAt: '2026-09-05T00:00:00.000Z',
-			status: TicketAdminStatus.EmAndamento,
+			status: TicketStatus.EmAndamento,
 		});
 		await seedTicket({
 			number: 4,

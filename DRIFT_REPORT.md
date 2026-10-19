@@ -1,5 +1,38 @@
 # DRIFT_REPORT
 
+## Drift DRIFT-SUP-STATUS-001 — status único do Ticket (contrato canônico)
+
+O código local unificou `adminStatus`/`requesterStatus` em `status` e trocou o
+RF08 `resolve` por `approve`/`reject`/`cancel` (ver `ACTUAL_STATE.md`). O PRD
+canônico (`luciluci-docs/support`, revisão fixada `d034566`) ainda descreve o
+modelo antigo e precisa de revisão antes de qualquer congelamento:
+
+- §9.2 "Independência dos status": substituir por status único e fluxo ITIL.
+- Campos `adminStatus`/`requesterStatus` (tabela de Ticket, RF05, RF06, RF09) e
+  `statusType` do AuditLog (RF13, §4/§8): remover; `newStatus` permanece.
+- RF06: transições livres só para admin; solicitante não altera `status`.
+- RF08: deixa de ser "resolver"; passa a `approve`, `reject` e `cancel`
+  (14 → 16 operações Support) com `invalid_status_transition`.
+- RF10: bloqueio `ticket_closed` e a mudança `pendente → em_andamento` na
+  primeira mensagem do admin; P3, P4 e P5 e a tabela de auditoria.
+- `notes.md`, `tdd.md` e `tp.md`: 10, 23 e 11 menções respectivamente.
+- DEC-SUP-06 (RF08 repetida sem semântica de no-op) fica superada: agora é `422`.
+
+Atualização 2026-10-19: a revisão Support 1.0 do contrato canônico foi redigida na
+branch local `docs/support-status-unico` do `luciluci-docs` (base `14efcdf`, PRD/TDD/TP/
+notes/README alterados, DEC-SUP-13), **sem commit nem push**. O `main` do docs só tem
+Support 0.9; os contratos RF08–RF13 (0.10–0.15) existem apenas em `14efcdf`, que não está
+no GitHub. O drift `originRefId` segue separado e não consolidado.
+
+Fora do escopo desta mudança: finalização automática de `resolvido` por tempo
+(sem SLA no PRD).
+
+**Estado:** código local pronto e provado; contrato canônico **redigido, mas
+não publicado** (todos os itens acima estão cobertos na branch local, falta
+commit, push e fixar o gitlink); mudança incompatível de OpenAPI pendente de
+aceite; consumidores (BFF) ainda não verificados. O drift só fecha quando o
+contrato 1.0 estiver publicado e o gitlink apontar para ele.
+
 ## W1 integrada sem drift funcional novo
 
 A PR #17 integrou a seed W1 em `main` no merge `1c1348d`. A CI remota

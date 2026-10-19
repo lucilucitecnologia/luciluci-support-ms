@@ -13,7 +13,9 @@ export default function buildTicketRouter(dataSource: DataSource): Router {
 	router.get('/history', controller.listHistory);
 	router.get('/:ticketId', controller.getById);
 	router.patch('/:ticketId', controller.update);
-	router.post('/:ticketId/resolve', controller.resolve);
+	router.post('/:ticketId/approve', controller.approve);
+	router.post('/:ticketId/reject', controller.reject);
+	router.post('/:ticketId/cancel', controller.cancel);
 	router.post('/:ticketId/messages', controller.createMessage);
 	router.get('/:ticketId/messages', controller.listMessages);
 	router.patch('/:ticketId/messages/:messageId/visibility', controller.updateMessageVisibility);

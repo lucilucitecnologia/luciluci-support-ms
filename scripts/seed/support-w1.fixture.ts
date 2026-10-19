@@ -28,7 +28,7 @@ export const W1_TABLES: W1Table[] = [
 ];
 export type W1Fixture = Record<W1Table, W1Row[]>;
 
-type AdminStatus = 'pendente' | 'cancelado' | 'em_andamento' | 'finalizado' | 'resolvido';
+type Status = 'pendente' | 'em_andamento' | 'resolvido' | 'finalizado' | 'cancelado';
 type Priority = 'baixa' | 'media' | 'alta' | 'urgente';
 type DepartmentKey = 'D01' | 'D02' | 'D03' | 'D04' | 'D05' | 'D06';
 type Requester =
@@ -37,15 +37,20 @@ type Requester =
 	| typeof W1_ACTORS.cdA
 	| typeof W1_ACTORS.cdB;
 
+export interface W1Step {
+	by: 'admin' | 'requester';
+	status: Status;
+}
+
 export interface W1Scenario {
 	key: string;
 	department: DepartmentKey;
 	requester: Requester;
 	priority: Priority;
-	adminStatus: AdminStatus;
-	requesterResolved: boolean;
+	status: Status;
 	followUp: boolean;
-	adminTransitions: AdminStatus[];
+	// Status changes after the first admin message (which moves the Ticket to em_andamento).
+	steps: W1Step[];
 }
 
 export const W1_SCENARIOS: W1Scenario[] = [
@@ -54,160 +59,169 @@ export const W1_SCENARIOS: W1Scenario[] = [
 		department: 'D01',
 		requester: W1_ACTORS.backofficeA,
 		priority: 'baixa',
-		adminStatus: 'cancelado',
-		requesterResolved: true,
+		status: 'cancelado',
 		followUp: true,
-		adminTransitions: ['cancelado'],
+		steps: [{ by: 'requester', status: 'cancelado' }],
 	},
 	{
 		key: 'T02',
 		department: 'D01',
 		requester: W1_ACTORS.backofficeA,
 		priority: 'media',
-		adminStatus: 'em_andamento',
-		requesterResolved: true,
+		status: 'em_andamento',
 		followUp: true,
-		adminTransitions: ['em_andamento'],
+		steps: [],
 	},
 	{
 		key: 'T03',
 		department: 'D01',
 		requester: W1_ACTORS.backofficeA,
 		priority: 'alta',
-		adminStatus: 'finalizado',
-		requesterResolved: false,
+		status: 'finalizado',
 		followUp: true,
-		adminTransitions: ['finalizado'],
+		steps: [
+			{ by: 'admin', status: 'resolvido' },
+			{ by: 'requester', status: 'finalizado' },
+		],
 	},
 	{
 		key: 'T04',
 		department: 'D02',
 		requester: W1_ACTORS.backofficeA,
 		priority: 'urgente',
-		adminStatus: 'resolvido',
-		requesterResolved: true,
+		status: 'resolvido',
 		followUp: true,
-		adminTransitions: ['resolvido'],
+		steps: [{ by: 'admin', status: 'resolvido' }],
 	},
 	{
 		key: 'T05',
 		department: 'D02',
 		requester: W1_ACTORS.backofficeB,
 		priority: 'baixa',
-		adminStatus: 'cancelado',
-		requesterResolved: true,
+		status: 'cancelado',
 		followUp: true,
-		adminTransitions: ['cancelado'],
+		steps: [{ by: 'admin', status: 'cancelado' }],
 	},
 	{
 		key: 'T06',
 		department: 'D02',
 		requester: W1_ACTORS.backofficeB,
 		priority: 'media',
-		adminStatus: 'em_andamento',
-		requesterResolved: false,
+		status: 'em_andamento',
 		followUp: true,
-		adminTransitions: ['em_andamento'],
+		steps: [
+			{ by: 'admin', status: 'resolvido' },
+			{ by: 'requester', status: 'pendente' },
+			{ by: 'admin', status: 'em_andamento' },
+		],
 	},
 	{
 		key: 'T07',
 		department: 'D03',
 		requester: W1_ACTORS.backofficeB,
 		priority: 'alta',
-		adminStatus: 'finalizado',
-		requesterResolved: true,
+		status: 'finalizado',
 		followUp: true,
-		adminTransitions: ['finalizado'],
+		steps: [{ by: 'admin', status: 'finalizado' }],
 	},
 	{
 		key: 'T08',
 		department: 'D03',
 		requester: W1_ACTORS.backofficeB,
 		priority: 'urgente',
-		adminStatus: 'resolvido',
-		requesterResolved: true,
+		status: 'resolvido',
 		followUp: true,
-		adminTransitions: ['resolvido'],
+		steps: [{ by: 'admin', status: 'resolvido' }],
 	},
 	{
 		key: 'T09',
 		department: 'D03',
 		requester: W1_ACTORS.cdA,
 		priority: 'baixa',
-		adminStatus: 'cancelado',
-		requesterResolved: false,
+		status: 'cancelado',
 		followUp: true,
-		adminTransitions: ['cancelado'],
+		steps: [
+			{ by: 'admin', status: 'pendente' },
+			{ by: 'requester', status: 'cancelado' },
+		],
 	},
 	{
 		key: 'T10',
 		department: 'D04',
 		requester: W1_ACTORS.cdA,
 		priority: 'media',
-		adminStatus: 'em_andamento',
-		requesterResolved: true,
+		status: 'em_andamento',
 		followUp: true,
-		adminTransitions: ['em_andamento'],
+		steps: [
+			{ by: 'admin', status: 'pendente' },
+			{ by: 'admin', status: 'em_andamento' },
+		],
 	},
 	{
 		key: 'T11',
 		department: 'D04',
 		requester: W1_ACTORS.cdA,
 		priority: 'alta',
-		adminStatus: 'finalizado',
-		requesterResolved: true,
+		status: 'finalizado',
 		followUp: true,
-		adminTransitions: ['finalizado'],
+		steps: [
+			{ by: 'admin', status: 'resolvido' },
+			{ by: 'requester', status: 'pendente' },
+			{ by: 'admin', status: 'em_andamento' },
+			{ by: 'admin', status: 'resolvido' },
+			{ by: 'requester', status: 'finalizado' },
+		],
 	},
 	{
 		key: 'T12',
 		department: 'D04',
 		requester: W1_ACTORS.cdA,
 		priority: 'urgente',
-		adminStatus: 'resolvido',
-		requesterResolved: false,
+		status: 'resolvido',
 		followUp: true,
-		adminTransitions: ['resolvido'],
+		steps: [
+			{ by: 'admin', status: 'pendente' },
+			{ by: 'admin', status: 'resolvido' },
+		],
 	},
 	{
 		key: 'T13',
 		department: 'D05',
 		requester: W1_ACTORS.cdB,
 		priority: 'baixa',
-		adminStatus: 'pendente',
-		requesterResolved: false,
+		status: 'pendente',
 		followUp: false,
-		adminTransitions: ['em_andamento', 'pendente'],
+		steps: [{ by: 'admin', status: 'pendente' }],
 	},
 	{
 		key: 'T14',
 		department: 'D05',
 		requester: W1_ACTORS.cdB,
 		priority: 'media',
-		adminStatus: 'pendente',
-		requesterResolved: false,
+		status: 'pendente',
 		followUp: false,
-		adminTransitions: ['em_andamento', 'pendente'],
+		steps: [{ by: 'admin', status: 'pendente' }],
 	},
 	{
 		key: 'T15',
 		department: 'D06',
 		requester: W1_ACTORS.cdB,
 		priority: 'alta',
-		adminStatus: 'pendente',
-		requesterResolved: false,
+		status: 'pendente',
 		followUp: false,
-		adminTransitions: [],
+		steps: [{ by: 'admin', status: 'pendente' }],
 	},
 	{
 		key: 'T16',
 		department: 'D06',
 		requester: W1_ACTORS.cdB,
 		priority: 'urgente',
-		adminStatus: 'pendente',
-		requesterResolved: false,
+		status: 'pendente',
 		followUp: false,
-		adminTransitions: [],
+		steps: [
+			{ by: 'admin', status: 'resolvido' },
+			{ by: 'requester', status: 'pendente' },
+		],
 	},
 ];
 
@@ -297,7 +311,6 @@ export function buildW1Fixture(): W1Fixture {
 		authorId: string,
 		origin: string,
 		action: string,
-		statusType: string | null = null,
 		newStatus: string | null = null,
 	): void => {
 		result.ticket_audit_logs.push({
@@ -307,7 +320,6 @@ export function buildW1Fixture(): W1Fixture {
 			author_id: authorId,
 			origin,
 			action,
-			status_type: statusType,
 			new_status: newStatus,
 		});
 	};
@@ -339,13 +351,8 @@ export function buildW1Fixture(): W1Fixture {
 		const createdAt = instant(ordinal, 0);
 		const followAt = instant(ordinal, 1);
 		const adminAt = instant(ordinal, 2);
-		const finalStep = scenario.requesterResolved
-			? 5
-			: scenario.adminTransitions.length === 2
-				? 4
-				: scenario.adminTransitions.length === 1
-					? 3
-					: 2;
+		// criação 0, follow-up 1, mensagem do admin 2, depois um minuto por passo.
+		const finalStep = 2 + scenario.steps.length;
 		result.tickets.push({
 			id,
 			number: ordinal,
@@ -355,8 +362,7 @@ export function buildW1Fixture(): W1Fixture {
 			priority: scenario.priority,
 			origin,
 			origin_ref_id: 'seed-' + origin + '-ref-' + String(ordinal).padStart(2, '0'),
-			admin_status: scenario.adminStatus,
-			requester_status: scenario.requesterResolved ? 'resolvido' : 'nao_resolvido',
+			status: scenario.status,
 			created_at: createdAt,
 			updated_at: instant(ordinal, finalStep),
 		});
@@ -379,15 +385,7 @@ export function buildW1Fixture(): W1Fixture {
 				followAt,
 			);
 			addAudit(id, followAt, scenario.requester, origin, 'nova_mensagem');
-			addAudit(
-				id,
-				followAt,
-				scenario.requester,
-				origin,
-				'alteracao_status',
-				'admin',
-				'pendente',
-			);
+			addAudit(id, followAt, scenario.requester, origin, 'alteracao_status', 'pendente');
 		}
 		const adminMessageId = addMessage(
 			id,
@@ -398,27 +396,19 @@ export function buildW1Fixture(): W1Fixture {
 			adminAt,
 		);
 		addAudit(id, adminAt, admin, 'admin', 'nova_mensagem');
-		for (const [transitionIndex, status] of scenario.adminTransitions.entries()) {
+		// The first admin message on a pendente Ticket starts the attendance.
+		addAudit(id, adminAt, admin, 'admin', 'alteracao_status', 'em_andamento');
+		for (const [stepIndex, step] of scenario.steps.entries()) {
+			const byAdmin = step.by === 'admin';
 			addAudit(
 				id,
-				instant(ordinal, 3 + transitionIndex),
-				admin,
-				'admin',
+				instant(ordinal, 3 + stepIndex),
+				byAdmin ? admin : scenario.requester,
+				byAdmin ? 'admin' : origin,
 				'alteracao_status',
-				'admin',
-				status,
+				step.status,
 			);
 		}
-		if (scenario.requesterResolved)
-			addAudit(
-				id,
-				instant(ordinal, 5),
-				scenario.requester,
-				origin,
-				'alteracao_status',
-				'requester',
-				'resolvido',
-			);
 		if (ordinal === 1 || ordinal === 2)
 			result.ticket_message_media.push({
 				ticket_message_id: adminMessageId,

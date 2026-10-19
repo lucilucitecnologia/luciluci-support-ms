@@ -2,10 +2,9 @@ import Department from '../../../src/features/department/entities/department.ent
 import DepartmentAllowedUser from '../../../src/features/department/entities/department-allowed-user.entity';
 import IDepartmentRepository from '../../../src/features/department/use-cases/repositories/idepartment.repository';
 import Ticket from '../../../src/features/ticket/entities/ticket.entity';
-import TicketAdminStatus from '../../../src/features/ticket/entities/enums/ticket-admin-status.enum';
+import TicketStatus from '../../../src/features/ticket/entities/enums/ticket-status.enum';
 import TicketOrigin from '../../../src/features/ticket/entities/enums/ticket-origin.enum';
 import TicketPriority from '../../../src/features/ticket/entities/enums/ticket-priority.enum';
-import TicketRequesterStatus from '../../../src/features/ticket/entities/enums/ticket-requester-status.enum';
 import IUpdateTicketRepository from '../../../src/features/ticket/use-cases/repositories/iupdate-ticket.repository';
 import UpdateTicketUseCase from '../../../src/features/ticket/use-cases/update-ticket.use-case';
 
@@ -32,8 +31,7 @@ function ticket(): Ticket {
 		priority: TicketPriority.Alta,
 		origin: TicketOrigin.Backoffice,
 		originRefId: 'ref-1',
-		adminStatus: TicketAdminStatus.Pendente,
-		requesterStatus: TicketRequesterStatus.NaoResolvido,
+		status: TicketStatus.Pendente,
 		createdAt: originalTime,
 		updatedAt: originalTime,
 	});
@@ -76,7 +74,7 @@ describe('Unit: RF06 transaction sequencing', () => {
 			aggregate.id,
 			{
 				departmentId: targetId,
-				adminStatus: TicketAdminStatus.Finalizado,
+				status: TicketStatus.Finalizado,
 			},
 			{ id: 'admin-1', role: 'admin' },
 		);
@@ -87,11 +85,10 @@ describe('Unit: RF06 transaction sequencing', () => {
 			'update',
 			'audit',
 		]);
-		expect(response).toMatchObject({ departmentId: targetId, adminStatus: 'finalizado' });
+		expect(response).toMatchObject({ departmentId: targetId, status: 'finalizado' });
 		expect(ticketRepository.createAuditLog).toHaveBeenCalledWith(
 			expect.objectContaining({
 				action: 'alteracao_status',
-				statusType: 'admin',
 				newStatus: 'finalizado',
 				authorId: 'admin-1',
 				origin: 'admin',

@@ -13,7 +13,6 @@ const TicketAuditLogSchema = new EntitySchema<TicketAuditLog>({
 		authorId: { name: 'author_id', type: String },
 		origin: { type: String },
 		action: { type: String },
-		statusType: { name: 'status_type', type: String, nullable: true },
 		newStatus: { name: 'new_status', type: String, nullable: true },
 	},
 	relations: {

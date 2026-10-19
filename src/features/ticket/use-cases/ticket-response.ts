@@ -1,8 +1,7 @@
 import Ticket from '../entities/ticket.entity';
-import TicketAdminStatus from '../entities/enums/ticket-admin-status.enum';
 import TicketOrigin from '../entities/enums/ticket-origin.enum';
 import TicketPriority from '../entities/enums/ticket-priority.enum';
-import TicketRequesterStatus from '../entities/enums/ticket-requester-status.enum';
+import TicketStatus from '../entities/enums/ticket-status.enum';
 
 export interface TicketResponse {
 	id: string;
@@ -13,8 +12,7 @@ export interface TicketResponse {
 	priority: TicketPriority;
 	origin: TicketOrigin;
 	originRefId: string;
-	adminStatus: TicketAdminStatus;
-	requesterStatus: TicketRequesterStatus;
+	status: TicketStatus;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -29,8 +27,7 @@ export function toTicketResponse(ticket: Ticket): TicketResponse {
 		priority: ticket.priority,
 		origin: ticket.origin,
 		originRefId: ticket.originRefId,
-		adminStatus: ticket.adminStatus,
-		requesterStatus: ticket.requesterStatus,
+		status: ticket.status,
 		createdAt: ticket.createdAt.toISOString(),
 		updatedAt: ticket.updatedAt.toISOString(),
 	};

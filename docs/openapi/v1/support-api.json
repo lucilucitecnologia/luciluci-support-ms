@@ -37,7 +37,6 @@
 			"CreatedTicket": {
 				"additionalProperties": false,
 				"properties": {
-					"adminStatus": { "enum": ["pendente"], "type": "string" },
 					"createdAt": { "format": "date-time", "type": "string" },
 					"departmentId": { "format": "uuid", "type": "string" },
 					"id": { "format": "uuid", "type": "string" },
@@ -49,7 +48,7 @@
 					},
 					"priority": { "$ref": "#/components/schemas/TicketPriority" },
 					"requesterId": { "type": "string" },
-					"requesterStatus": { "enum": ["nao_resolvido"], "type": "string" },
+					"status": { "enum": ["pendente"], "type": "string" },
 					"subject": { "type": "string" },
 					"updatedAt": { "format": "date-time", "type": "string" }
 				},
@@ -62,8 +61,7 @@
 					"priority",
 					"origin",
 					"originRefId",
-					"adminStatus",
-					"requesterStatus",
+					"status",
 					"createdAt",
 					"updatedAt"
 				],
@@ -172,10 +170,25 @@
 				"required": ["page", "size", "total", "totalPages"],
 				"type": "object"
 			},
+			"RequesterTicketStatusRequest": {
+				"additionalProperties": false,
+				"properties": {
+					"mediaIds": {
+						"description": "Requires message.",
+						"items": { "type": "string" },
+						"type": "array"
+					},
+					"message": {
+						"description": "Optional message, always visible to the requester. When present it is created with the status change and writes an extra nova_mensagem audit.",
+						"pattern": "\\S",
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
 			"Ticket": {
 				"additionalProperties": false,
 				"properties": {
-					"adminStatus": { "$ref": "#/components/schemas/TicketAdminStatus" },
 					"createdAt": { "format": "date-time", "type": "string" },
 					"departmentId": { "format": "uuid", "type": "string" },
 					"id": { "format": "uuid", "type": "string" },
@@ -187,7 +200,7 @@
 					},
 					"priority": { "$ref": "#/components/schemas/TicketPriority" },
 					"requesterId": { "type": "string" },
-					"requesterStatus": { "enum": ["nao_resolvido"], "type": "string" },
+					"status": { "$ref": "#/components/schemas/TicketStatus" },
 					"subject": { "type": "string" },
 					"updatedAt": { "format": "date-time", "type": "string" }
 				},
@@ -200,21 +213,15 @@
 					"priority",
 					"origin",
 					"originRefId",
-					"adminStatus",
-					"requesterStatus",
+					"status",
 					"createdAt",
 					"updatedAt"
 				],
 				"type": "object"
 			},
-			"TicketAdminStatus": {
-				"enum": ["pendente", "cancelado", "em_andamento", "finalizado", "resolvido"],
-				"type": "string"
-			},
 			"TicketDetail": {
 				"additionalProperties": false,
 				"properties": {
-					"adminStatus": { "$ref": "#/components/schemas/TicketAdminStatus" },
 					"createdAt": { "format": "date-time", "type": "string" },
 					"departmentId": { "format": "uuid", "type": "string" },
 					"id": { "format": "uuid", "type": "string" },
@@ -226,7 +233,7 @@
 					},
 					"priority": { "$ref": "#/components/schemas/TicketPriority" },
 					"requesterId": { "type": "string" },
-					"requesterStatus": { "enum": ["nao_resolvido", "resolvido"], "type": "string" },
+					"status": { "$ref": "#/components/schemas/TicketStatus" },
 					"subject": { "type": "string" },
 					"updatedAt": { "format": "date-time", "type": "string" }
 				},
@@ -239,8 +246,7 @@
 					"priority",
 					"origin",
 					"originRefId",
-					"adminStatus",
-					"requesterStatus",
+					"status",
 					"createdAt",
 					"updatedAt"
 				],
@@ -258,7 +264,6 @@
 					"newStatus": { "nullable": true, "type": "string" },
 					"number": { "minimum": 1, "type": "integer" },
 					"origin": { "enum": ["admin", "backoffice", "cd"], "type": "string" },
-					"statusType": { "nullable": true, "type": "string" },
 					"ticketId": { "format": "uuid", "type": "string" }
 				},
 				"required": [
@@ -268,7 +273,6 @@
 					"authorId",
 					"origin",
 					"action",
-					"statusType",
 					"newStatus"
 				],
 				"type": "object"
@@ -299,7 +303,7 @@
 					},
 					"priority": { "$ref": "#/components/schemas/TicketPriority" },
 					"requesterId": { "type": "string" },
-					"status": { "$ref": "#/components/schemas/TicketAdminStatus" },
+					"status": { "$ref": "#/components/schemas/TicketStatus" },
 					"subject": { "type": "string" }
 				},
 				"required": [
@@ -367,6 +371,10 @@
 			"TicketMessageType": { "enum": ["admin", "backoffice", "cd"], "type": "string" },
 			"TicketOrigin": { "enum": ["backoffice", "cd"], "type": "string" },
 			"TicketPriority": { "enum": ["baixa", "media", "alta", "urgente"], "type": "string" },
+			"TicketStatus": {
+				"enum": ["pendente", "em_andamento", "resolvido", "finalizado", "cancelado"],
+				"type": "string"
+			},
 			"UpdateDepartmentRequest": {
 				"additionalProperties": false,
 				"minProperties": 1,
@@ -390,9 +398,9 @@
 				"additionalProperties": false,
 				"minProperties": 1,
 				"properties": {
-					"adminStatus": { "$ref": "#/components/schemas/TicketAdminStatus" },
 					"departmentId": { "format": "uuid", "type": "string" },
-					"priority": { "$ref": "#/components/schemas/TicketPriority" }
+					"priority": { "$ref": "#/components/schemas/TicketPriority" },
+					"status": { "$ref": "#/components/schemas/TicketStatus" }
 				},
 				"type": "object"
 			}
@@ -843,7 +851,7 @@
 				"tags": ["Tickets"]
 			},
 			"patch": {
-				"description": "Locks Ticket, then relevant Departments in UUID order. Admin needs current and target membership; requester needs ownership. No-op preserves updatedAt. A changed adminStatus writes one audit in the transaction.",
+				"description": "Locks Ticket, then relevant Departments in UUID order. Admin needs current and target membership and may set any status. Requester needs ownership and may not send status (403): requester status changes use approve, reject and cancel. No-op preserves updatedAt. A changed status writes one audit in the transaction.",
 				"parameters": [
 					{ "$ref": "#/components/parameters/CorrelationIdHeader" },
 					{ "$ref": "#/components/parameters/PerformedByHeader" },
@@ -913,7 +921,153 @@
 						"description": "Unexpected error; transaction rolled back."
 					}
 				},
-				"summary": "Update ticket priority, department, or admin status",
+				"summary": "Update ticket priority, department, or status",
+				"tags": ["Tickets"]
+			}
+		},
+		"/api/support/tickets/{ticketId}/approve": {
+			"post": {
+				"description": "Requester approves the proposed solution: resolvido -> finalizado. Requester owner only; backoffice or cd role need not match Ticket origin. Locks Ticket, changes status and writes the alteracao_status audit atomically. No request body. Any other current status returns 422.",
+				"parameters": [
+					{ "$ref": "#/components/parameters/CorrelationIdHeader" },
+					{ "$ref": "#/components/parameters/PerformedByHeader" },
+					{ "$ref": "#/components/parameters/PerformedByTypeHeader" },
+					{
+						"in": "path",
+						"name": "ticketId",
+						"required": true,
+						"schema": { "format": "uuid", "type": "string" }
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/Ticket" }
+							}
+						},
+						"description": "Complete Ticket after the status change."
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Missing or invalid correlation/actor headers."
+					},
+					"403": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Admin or non-owner."
+					},
+					"404": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Ticket not found."
+					},
+					"422": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Invalid ticketId, any present body, or status transition (invalid_status_transition)."
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Unexpected error."
+					}
+				},
+				"summary": "Approve the resolution of a Ticket as its requester",
+				"tags": ["Tickets"]
+			}
+		},
+		"/api/support/tickets/{ticketId}/cancel": {
+			"post": {
+				"description": "Requester cancels the ticket: pendente or em_andamento -> cancelado. Requester owner only; backoffice or cd role need not match Ticket origin. Locks Ticket, changes status and writes the alteracao_status audit atomically. Optional message/mediaIds create a requester-visible Message and an extra nova_mensagem audit; mediaIds require message. Any other current status returns 422.",
+				"parameters": [
+					{ "$ref": "#/components/parameters/CorrelationIdHeader" },
+					{ "$ref": "#/components/parameters/PerformedByHeader" },
+					{ "$ref": "#/components/parameters/PerformedByTypeHeader" },
+					{
+						"in": "path",
+						"name": "ticketId",
+						"required": true,
+						"schema": { "format": "uuid", "type": "string" }
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RequesterTicketStatusRequest"
+							}
+						}
+					},
+					"required": false
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/Ticket" }
+							}
+						},
+						"description": "Complete Ticket after the status change."
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Missing or invalid correlation/actor headers."
+					},
+					"403": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Admin or non-owner."
+					},
+					"404": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Ticket not found."
+					},
+					"422": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Invalid ticketId, body, or status transition (invalid_status_transition)."
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						},
+						"description": "Unexpected error."
+					}
+				},
+				"summary": "Cancel a Ticket as its requester",
 				"tags": ["Tickets"]
 			}
 		},
@@ -1005,7 +1159,7 @@
 				"tags": ["Tickets"]
 			},
 			"post": {
-				"description": "RF10. Body authorId/type must match actor headers. Admin needs current Department membership and may create an internal message. Requester owner must send a visible message. Every POST creates a new message; requester messages assign adminStatus=pendente and write two audits even if already pending. Ticket is locked before Department; all writes are atomic.",
+				"description": "RF10. Body authorId/type must match actor headers. Admin needs current Department membership and may create an internal message. Requester owner must send a visible message. Every POST creates a new message; closed tickets (finalizado, cancelado) reject messages with 422 ticket_closed. Requester messages assign status=pendente and write two audits even if already pending. The first admin message on a pendente ticket moves it to em_andamento and writes an alteracao_status audit. Ticket is locked before Department; all writes are atomic.",
 				"parameters": [
 					{ "$ref": "#/components/parameters/CorrelationIdHeader" },
 					{ "$ref": "#/components/parameters/PerformedByHeader" },
@@ -1128,9 +1282,9 @@
 				"tags": ["Tickets"]
 			}
 		},
-		"/api/support/tickets/{ticketId}/resolve": {
+		"/api/support/tickets/{ticketId}/reject": {
 			"post": {
-				"description": "RF08. Requester owner only; backoffice or cd role need not match Ticket origin. No request body. Locks Ticket, changes requesterStatus and writes one requester audit atomically. Already resolved is a no-op.",
+				"description": "Requester rejects the proposed solution: resolvido -> pendente. Requester owner only; backoffice or cd role need not match Ticket origin. Locks Ticket, changes status and writes the alteracao_status audit atomically. Optional message/mediaIds create a requester-visible Message and an extra nova_mensagem audit; mediaIds require message. Any other current status returns 422.",
 				"parameters": [
 					{ "$ref": "#/components/parameters/CorrelationIdHeader" },
 					{ "$ref": "#/components/parameters/PerformedByHeader" },
@@ -1142,6 +1296,16 @@
 						"schema": { "format": "uuid", "type": "string" }
 					}
 				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RequesterTicketStatusRequest"
+							}
+						}
+					},
+					"required": false
+				},
 				"responses": {
 					"200": {
 						"content": {
@@ -1149,7 +1313,7 @@
 								"schema": { "$ref": "#/components/schemas/Ticket" }
 							}
 						},
-						"description": "Complete Ticket after resolution or authorized no-op."
+						"description": "Complete Ticket after the status change."
 					},
 					"400": {
 						"content": {
@@ -1181,7 +1345,7 @@
 								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
 							}
 						},
-						"description": "Invalid ticketId or any present request body."
+						"description": "Invalid ticketId, body, or status transition (invalid_status_transition)."
 					},
 					"500": {
 						"content": {
@@ -1189,10 +1353,10 @@
 								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
 							}
 						},
-						"description": "Unexpected error; transaction rolled back."
+						"description": "Unexpected error."
 					}
 				},
-				"summary": "Resolve a Ticket as its requester",
+				"summary": "Reject the resolution of a Ticket as its requester",
 				"tags": ["Tickets"]
 			}
 		},
@@ -1227,7 +1391,7 @@
 					{
 						"in": "query",
 						"name": "status",
-						"schema": { "$ref": "#/components/schemas/TicketAdminStatus" }
+						"schema": { "$ref": "#/components/schemas/TicketStatus" }
 					},
 					{
 						"in": "query",
@@ -1424,7 +1588,7 @@
 					{
 						"in": "query",
 						"name": "status",
-						"schema": { "$ref": "#/components/schemas/TicketAdminStatus" }
+						"schema": { "$ref": "#/components/schemas/TicketStatus" }
 					},
 					{
 						"in": "query",

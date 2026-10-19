@@ -178,11 +178,17 @@ async function main() {
 				assert.equal(response.status, 201);
 				return json(response);
 			};
-			const resolve = (id, actor = 'requester-1', role = 'cd') =>
-				fetch(`${url}/api/support/tickets/${id}/resolve`, {
+			const act = (action, id, body, actor = 'requester-1', role = 'cd') =>
+				fetch(`${url}/api/support/tickets/${id}/${action}`, {
 					method: 'POST',
-					headers: headers(actor, role),
+					headers: {
+						...headers(actor, role),
+						...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+					},
+					...(body === undefined ? {} : { body }),
 				});
+			const proposeResolution = async (id) =>
+				assert.equal((await patch(id, { status: 'resolvido' })).status, 200);
 			const patch = (id, body) =>
 				fetch(`${url}/api/support/tickets/${id}`, {
 					method: 'PATCH',
@@ -194,7 +200,7 @@ async function main() {
 			const readAudits = async (id) =>
 				(
 					await inspection.query(
-						'SELECT action,origin,author_id,status_type,new_status,datetime FROM ticket_audit_logs WHERE ticket_id=$1 ORDER BY datetime,id',
+						'SELECT action,origin,author_id,new_status,datetime FROM ticket_audit_logs WHERE ticket_id=$1 ORDER BY datetime,id',
 						[id],
 					)
 				).rows;
@@ -215,13 +221,14 @@ async function main() {
 				).rows,
 			});
 
-			const ticket = await createTicket('Effective resolution');
+			const ticket = await createTicket('Effective approval');
+			await proposeResolution(ticket.id);
 			const before = await readTicket(ticket.id);
-			let response = await resolve(ticket.id);
+			let response = await act('approve', ticket.id);
 			assert.equal(response.status, 200);
-			const resolved = await json(response);
+			const approved = await json(response);
 			assert.deepEqual(
-				Object.keys(resolved).sort(),
+				Object.keys(approved).sort(),
 				[
 					'id',
 					'number',
@@ -231,71 +238,129 @@ async function main() {
 					'priority',
 					'origin',
 					'originRefId',
-					'adminStatus',
-					'requesterStatus',
+					'status',
 					'createdAt',
 					'updatedAt',
 				].sort(),
 			);
-			assert.equal(resolved.requesterStatus, 'resolvido');
-			assert.equal(resolved.adminStatus, 'pendente');
-			assert.equal(resolved.priority, 'alta');
-			assert.equal(resolved.departmentId, department.id);
+			assert.equal(approved.status, 'finalizado');
+			assert.equal(approved.priority, 'alta');
+			assert.equal(approved.departmentId, department.id);
 			assert.ok(
-				new Date(resolved.updatedAt).getTime() > new Date(before.updated_at).getTime(),
-				`updatedAt must advance: ${resolved.updatedAt} > ${before.updated_at}`,
+				new Date(approved.updatedAt).getTime() > new Date(before.updated_at).getTime(),
+				`updatedAt must advance: ${approved.updatedAt} > ${before.updated_at}`,
 			);
-			const firstAudit = (await readAudits(ticket.id))[1];
+			const approveAudit = (await readAudits(ticket.id))[2];
 			assert.deepEqual(
 				{
-					action: firstAudit.action,
-					statusType: firstAudit.status_type,
-					newStatus: firstAudit.new_status,
-					authorId: firstAudit.author_id,
-					origin: firstAudit.origin,
+					action: approveAudit.action,
+					newStatus: approveAudit.new_status,
+					authorId: approveAudit.author_id,
+					origin: approveAudit.origin,
 				},
 				{
 					action: 'alteracao_status',
-					statusType: 'requester',
-					newStatus: 'resolvido',
+					newStatus: 'finalizado',
 					authorId: 'requester-1',
 					origin: 'cd',
 				},
 			);
-			assert.equal(firstAudit.datetime.getTime(), new Date(resolved.updatedAt).getTime());
-			const beforeNoop = await snapshot(ticket.id);
-			response = await resolve(ticket.id);
-			assert.equal(response.status, 200);
-			assert.deepEqual(await json(response), resolved);
-			assert.deepEqual(await snapshot(ticket.id), beforeNoop);
+			assert.equal(approveAudit.datetime.getTime(), new Date(approved.updatedAt).getTime());
 
-			for (const [actor, role] of [
-				['admin-1', 'admin'],
-				['other', 'backoffice'],
-			]) {
-				assert.equal((await resolve(ticket.id, actor, role)).status, 403);
+			// Repeating a requester action is not an idempotent replay: finalizado is terminal.
+			const beforeRepeat = await snapshot(ticket.id);
+			response = await act('approve', ticket.id);
+			assert.equal(response.status, 422);
+			assert.equal((await json(response)).message, 'invalid_status_transition');
+			assert.deepEqual(await snapshot(ticket.id), beforeRepeat);
+			for (const action of ['reject', 'cancel']) {
+				assert.equal((await act(action, ticket.id)).status, 422);
 			}
-			assert.deepEqual(await snapshot(ticket.id), beforeNoop);
+			assert.deepEqual(await snapshot(ticket.id), beforeRepeat);
+
+			for (const action of ['approve', 'reject', 'cancel']) {
+				for (const [actor, role] of [
+					['admin-1', 'admin'],
+					['other', 'backoffice'],
+				]) {
+					assert.equal(
+						(await act(action, ticket.id, undefined, actor, role)).status,
+						403,
+					);
+				}
+			}
+			assert.deepEqual(await snapshot(ticket.id), beforeRepeat);
 
 			for (const body of ['{}', 'null', '{"status":"resolvido"}']) {
-				assert.equal(
-					(
-						await fetch(`${url}/api/support/tickets/${ticket.id}/resolve`, {
-							method: 'POST',
-							headers: {
-								...headers('requester-1', 'cd'),
-								'Content-Type': 'application/json',
-							},
-							body,
-						})
-					).status,
-					422,
-				);
+				assert.equal((await act('approve', ticket.id, body)).status, 422);
 			}
-			assert.equal((await resolve('bad')).status, 422);
-			assert.equal((await resolve(randomUUID())).status, 404);
+			for (const body of ['null', '[]', '{"mediaIds":["m"]}', '{"message":" "}', '{"x":1}']) {
+				assert.equal((await act('reject', ticket.id, body)).status, 422);
+			}
+			assert.deepEqual(await snapshot(ticket.id), beforeRepeat);
+			assert.equal((await act('approve', 'bad')).status, 422);
+			assert.equal((await act('approve', randomUUID())).status, 404);
+
+			const rejected = await createTicket('Reject with message');
+			await proposeResolution(rejected.id);
+			const beforeReject = await snapshot(rejected.id);
+			response = await act(
+				'reject',
+				rejected.id,
+				JSON.stringify({ message: 'Not solved', mediaIds: ['m', 'm'] }),
+			);
+			assert.equal(response.status, 200);
+			assert.equal((await json(response)).status, 'pendente');
+			const afterReject = await snapshot(rejected.id);
+			assert.equal(afterReject.messages.length, beforeReject.messages.length + 1);
+			assert.equal(afterReject.media.length, beforeReject.media.length + 2);
+			assert.deepEqual(
+				afterReject.audits
+					.slice(beforeReject.audits.length)
+					.map((item) => [item.action, item.new_status])
+					.sort(([left], [right]) => left.localeCompare(right)),
+				[
+					['alteracao_status', 'pendente'],
+					['nova_mensagem', null],
+				],
+			);
+			const rejectMessage = afterReject.messages.find(
+				(item) => item.message === 'Not solved',
+			);
+			assert.deepEqual(
+				[
+					rejectMessage.type,
+					rejectMessage.author_id,
+					rejectMessage.is_visible_to_requester,
+				],
+				['cd', 'requester-1', true],
+			);
+			const rejectedNoMessage = await createTicket('Reject without message');
+			await proposeResolution(rejectedNoMessage.id);
+			const beforeBare = await snapshot(rejectedNoMessage.id);
+			assert.equal((await act('reject', rejectedNoMessage.id)).status, 200);
+			const afterBare = await snapshot(rejectedNoMessage.id);
+			assert.equal(afterBare.messages.length, beforeBare.messages.length);
+			assert.equal(afterBare.audits.length, beforeBare.audits.length + 1);
+			assert.equal((await readTicket(rejectedNoMessage.id)).status, 'pendente');
+
+			const cancelled = await createTicket('Cancel');
+			response = await act(
+				'cancel',
+				cancelled.id,
+				JSON.stringify({ message: 'No longer needed' }),
+			);
+			assert.equal(response.status, 200);
+			assert.equal((await json(response)).status, 'cancelado');
+			assert.equal((await readAudits(cancelled.id)).length, 3);
+			assert.equal((await act('cancel', cancelled.id)).status, 422);
+			const cancelFromResolved = await createTicket('Cancel from resolvido');
+			await proposeResolution(cancelFromResolved.id);
+			assert.equal((await act('cancel', cancelFromResolved.id)).status, 422);
+			assert.equal((await readTicket(cancelFromResolved.id)).status, 'resolvido');
 
 			const historical = await createTicket('Inactive Department');
+			await proposeResolution(historical.id);
 			assert.equal(
 				(
 					await fetch(`${url}/api/support/departments/${department.id}`, {
@@ -305,23 +370,33 @@ async function main() {
 				).status,
 				204,
 			);
-			assert.equal((await resolve(historical.id)).status, 200);
-			assert.equal((await readTicket(historical.id)).requester_status, 'resolvido');
+			assert.equal((await act('approve', historical.id)).status, 200);
+			assert.equal((await readTicket(historical.id)).status, 'finalizado');
 			department = await createDepartment('RF08 active for remaining scenarios');
 
 			const rollback = await createTicket('Rollback');
+			await proposeResolution(rollback.id);
 			const beforeRollback = await snapshot(rollback.id);
 			await inspection.query(`CREATE FUNCTION rf08_reject_audit() RETURNS trigger LANGUAGE plpgsql AS $$
 				BEGIN RAISE EXCEPTION 'RF08 controlled audit failure'; END $$;
 				CREATE TRIGGER rf08_reject_audit BEFORE INSERT ON ticket_audit_logs
 				FOR EACH ROW EXECUTE FUNCTION rf08_reject_audit();`);
-			assert.equal((await resolve(rollback.id)).status, 500);
+			assert.equal(
+				(
+					await act(
+						'reject',
+						rollback.id,
+						JSON.stringify({ message: 'x', mediaIds: ['a'] }),
+					)
+				).status,
+				500,
+			);
 			assert.deepEqual(await snapshot(rollback.id), beforeRollback);
 			await inspection.query(
 				'DROP TRIGGER rf08_reject_audit ON ticket_audit_logs; DROP FUNCTION rf08_reject_audit();',
 			);
 
-			const concurrent = await createTicket('RF08 x RF08');
+			const concurrent = await createTicket('cancel x cancel');
 			lockClient = new Client({ ...config, database: proof.database });
 			await lockClient.connect();
 			await lockClient.query('BEGIN');
@@ -329,41 +404,38 @@ async function main() {
 				concurrent.id,
 			]);
 			let finished = 0;
-			const calls = [resolve(concurrent.id), resolve(concurrent.id)].map((item) =>
+			const calls = [act('cancel', concurrent.id), act('cancel', concurrent.id)].map((item) =>
 				item.then((response) => {
 					finished += 1;
 					return response;
 				}),
 			);
 			await new Promise((done) => setTimeout(done, 200));
-			assert.equal(finished, 0, 'both RF08 calls must wait for PostgreSQL Ticket lock');
+			assert.equal(finished, 0, 'both calls must wait for PostgreSQL Ticket lock');
 			await lockClient.query('COMMIT');
-			const results = await within(Promise.all(calls), 'RF08 x RF08');
-			assert.deepEqual(
-				results.map((item) => item.status),
-				[200, 200],
+			const results = await within(Promise.all(calls), 'cancel x cancel');
+			assert.deepEqual(results.map((item) => item.status).sort(), [200, 422]);
+			assert.equal((await readTicket(concurrent.id)).status, 'cancelado');
+			const cancelAudits = (await readAudits(concurrent.id)).filter(
+				(item) => item.action === 'alteracao_status',
 			);
-			assert.equal((await readTicket(concurrent.id)).requester_status, 'resolvido');
-			const requesterAudits = (await readAudits(concurrent.id)).filter(
-				(item) => item.status_type === 'requester',
-			);
-			assert.equal(requesterAudits.length, 1);
+			assert.equal(cancelAudits.length, 1);
 			assert.equal(
 				(await readTicket(concurrent.id)).updated_at.getTime(),
-				requesterAudits[0].datetime.getTime(),
+				cancelAudits[0].datetime.getTime(),
 			);
 			await lockClient.end();
 			lockClient = undefined;
 
-			const mixed = await createTicket('RF06 x RF08');
+			const mixed = await createTicket('PATCH x cancel');
 			lockClient = new Client({ ...config, database: proof.database });
 			await lockClient.connect();
 			await lockClient.query('BEGIN');
 			await lockClient.query('SELECT id FROM tickets WHERE id=$1 FOR UPDATE', [mixed.id]);
 			finished = 0;
 			const mixedCalls = [
-				patch(mixed.id, { priority: 'urgente', adminStatus: 'em_andamento' }),
-				resolve(mixed.id),
+				patch(mixed.id, { priority: 'urgente', status: 'resolvido' }),
+				act('cancel', mixed.id),
 			].map((item) =>
 				item.then((response) => {
 					finished += 1;
@@ -371,24 +443,23 @@ async function main() {
 				}),
 			);
 			await new Promise((done) => setTimeout(done, 200));
-			assert.equal(finished, 0, 'RF06 and RF08 must wait for PostgreSQL Ticket lock');
+			assert.equal(finished, 0, 'PATCH and cancel must wait for PostgreSQL Ticket lock');
 			await lockClient.query('COMMIT');
-			const mixedResults = await within(Promise.all(mixedCalls), 'RF06 x RF08');
-			assert.deepEqual(
-				mixedResults.map((item) => item.status),
-				[200, 200],
-			);
+			const mixedResults = await within(Promise.all(mixedCalls), 'PATCH x cancel');
+			// Admin PATCH always wins eventually; cancel only succeeds if it ran first.
+			assert.equal(mixedResults[0].status, 200);
+			assert.ok([200, 422].includes(mixedResults[1].status));
 			assert.deepEqual(
 				{
 					priority: (await readTicket(mixed.id)).priority,
-					adminStatus: (await readTicket(mixed.id)).admin_status,
-					requesterStatus: (await readTicket(mixed.id)).requester_status,
+					status: (await readTicket(mixed.id)).status,
 				},
-				{ priority: 'urgente', adminStatus: 'em_andamento', requesterStatus: 'resolvido' },
+				{ priority: 'urgente', status: 'resolvido' },
 			);
-			const mixedAudits = await readAudits(mixed.id);
-			assert.equal(mixedAudits.filter((item) => item.status_type === 'admin').length, 1);
-			assert.equal(mixedAudits.filter((item) => item.status_type === 'requester').length, 1);
+			const mixedAudits = (await readAudits(mixed.id)).filter(
+				(item) => item.action === 'alteracao_status',
+			);
+			assert.equal(mixedAudits.length, mixedResults[1].status === 200 ? 2 : 1);
 			assert.equal(
 				(await readTicket(mixed.id)).updated_at.getTime(),
 				Math.max(...mixedAudits.map((item) => item.datetime.getTime())),
@@ -397,10 +468,18 @@ async function main() {
 			lockClient = undefined;
 
 			const spec = await json(await fetch(`${url}/api-docs-json`));
+			assert.equal(spec.paths['/api/support/tickets/{ticketId}/resolve'], undefined);
 			assert.equal(
-				spec.paths['/api/support/tickets/{ticketId}/resolve'].post.requestBody,
+				spec.paths['/api/support/tickets/{ticketId}/approve'].post.requestBody,
 				undefined,
 			);
+			for (const action of ['reject', 'cancel']) {
+				assert.equal(
+					spec.paths[`/api/support/tickets/{ticketId}/${action}`].post.requestBody
+						.required,
+					false,
+				);
+			}
 			assert.ok(spec.paths['/api/support/tickets/{ticketId}'].get);
 			assert.equal(
 				(await inspection.query('SELECT count(*) FROM idempotency_keys')).rows[0].count,
@@ -414,7 +493,7 @@ async function main() {
 				throw new Error(`Compiled process exited unexpectedly: ${logs}`);
 		}
 		console.log(
-			'RF08 PostgreSQL compiled process, rollback, no-op, ACL, and Ticket lock concurrency proof OK',
+			'RF08 PostgreSQL compiled process, rollback, transitions, ACL, and Ticket lock concurrency proof OK',
 		);
 	} finally {
 		await stop(child);

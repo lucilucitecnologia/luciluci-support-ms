@@ -124,8 +124,7 @@ describe('CreateTicketUseCase', () => {
 			priority: 'alta',
 			origin: 'backoffice',
 			originRefId: 'ref-1',
-			adminStatus: 'pendente',
-			requesterStatus: 'nao_resolvido',
+			status: 'pendente',
 			createdAt: timestamp.toISOString(),
 			updatedAt: timestamp.toISOString(),
 		});
@@ -149,7 +148,6 @@ describe('CreateTicketUseCase', () => {
 			authorId: 'requester-123',
 			origin: 'backoffice',
 			action: 'criacao_ticket',
-			statusType: null,
 			newStatus: null,
 			datetime: timestamp,
 		});

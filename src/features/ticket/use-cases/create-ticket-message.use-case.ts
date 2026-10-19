@@ -4,12 +4,13 @@ import ForbiddenError from '../../../shared/kernel/exceptions/forbidden.error';
 import NotFoundError from '../../../shared/kernel/exceptions/not-found.error';
 import UnprocessableEntityError from '../../../shared/kernel/exceptions/unprocessable-entity.error';
 import IDepartmentRepository from '../../department/use-cases/repositories/idepartment.repository';
-import TicketAdminStatus from '../entities/enums/ticket-admin-status.enum';
 import TicketAuditAction from '../entities/enums/ticket-audit-action.enum';
+import TicketStatus from '../entities/enums/ticket-status.enum';
 import TicketAuditLog from '../entities/ticket-audit-log.entity';
 import TicketMessage from '../entities/ticket-message.entity';
 import TicketMessageMedia from '../entities/ticket-message-media.entity';
 import ICreateTicketMessageRepository from './repositories/icreate-ticket-message.repository';
+import { isClosedStatus } from './ticket-status-policy';
 import { TicketMessageResponse, toTicketMessageResponse } from './ticket-message-response';
 import { TicketActor } from './update-ticket.use-case';
 
@@ -58,6 +59,16 @@ export default class CreateTicketMessageUseCase {
 			}
 		}
 
+		if (isClosedStatus(ticket.status)) {
+			throw new UnprocessableEntityError('ticket_closed', [
+				{
+					field: 'ticketId',
+					code: 'ticket_closed',
+					message: 'Closed tickets do not accept messages.',
+				},
+			]);
+		}
+
 		// Use one logical instant for every write, moving forward if the stored timestamp is newer.
 		const now = this.now();
 		const timestamp =
@@ -85,17 +96,17 @@ export default class CreateTicketMessageUseCase {
 			}),
 		);
 
+		let newStatus = ticket.status;
 		if (actor.role === 'admin') {
-			await this.ticketRepository.touchAfterAdminMessage(ticket.id, timestamp);
+			// The first admin reply starts the attendance.
+			newStatus =
+				ticket.status === TicketStatus.Pendente ? TicketStatus.EmAndamento : ticket.status;
+			await this.ticketRepository.updateAfterAdminMessage(ticket.id, timestamp, newStatus);
 		} else {
 			await this.ticketRepository.updateAfterRequesterMessage(ticket.id, timestamp);
 		}
 
-		const audit = (
-			action: TicketAuditAction,
-			statusType: string | null,
-			newStatus: string | null,
-		) => {
+		const audit = (action: TicketAuditAction, status: string | null) => {
 			const entry = new TicketAuditLog();
 			entry.id = this.uuid();
 			entry.ticketId = ticket.id;
@@ -103,16 +114,17 @@ export default class CreateTicketMessageUseCase {
 			entry.authorId = actor.id;
 			entry.origin = actor.role;
 			entry.action = action;
-			entry.statusType = statusType;
-			entry.newStatus = newStatus;
+			entry.newStatus = status;
 			return entry;
 		};
-		await this.ticketRepository.createAuditLog(
-			audit(TicketAuditAction.NovaMensagem, null, null),
-		);
+		await this.ticketRepository.createAuditLog(audit(TicketAuditAction.NovaMensagem, null));
 		if (actor.role !== 'admin') {
 			await this.ticketRepository.createAuditLog(
-				audit(TicketAuditAction.AlteracaoStatus, 'admin', TicketAdminStatus.Pendente),
+				audit(TicketAuditAction.AlteracaoStatus, TicketStatus.Pendente),
+			);
+		} else if (newStatus !== ticket.status) {
+			await this.ticketRepository.createAuditLog(
+				audit(TicketAuditAction.AlteracaoStatus, newStatus),
 			);
 		}
 

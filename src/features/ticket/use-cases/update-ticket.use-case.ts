@@ -4,9 +4,9 @@ import ForbiddenError from '../../../shared/kernel/exceptions/forbidden.error';
 import NotFoundError from '../../../shared/kernel/exceptions/not-found.error';
 import UnprocessableEntityError from '../../../shared/kernel/exceptions/unprocessable-entity.error';
 import IDepartmentRepository from '../../department/use-cases/repositories/idepartment.repository';
-import TicketAdminStatus from '../entities/enums/ticket-admin-status.enum';
 import TicketAuditAction from '../entities/enums/ticket-audit-action.enum';
 import TicketPriority from '../entities/enums/ticket-priority.enum';
+import TicketStatus from '../entities/enums/ticket-status.enum';
 import TicketAuditLog from '../entities/ticket-audit-log.entity';
 import IUpdateTicketRepository from './repositories/iupdate-ticket.repository';
 import { TicketResponse, toTicketResponse } from './ticket-response';
@@ -16,7 +16,7 @@ export type TicketActorRole = 'admin' | 'backoffice' | 'cd';
 export interface UpdateTicketInput {
 	priority?: TicketPriority;
 	departmentId?: string;
-	adminStatus?: TicketAdminStatus;
+	status?: TicketStatus;
 }
 
 export interface TicketActor {
@@ -60,7 +60,8 @@ export default class UpdateTicketUseCase {
 			if (!current.allowedUsers.some((membership) => membership.userId === actor.id)) {
 				throw new ForbiddenError('forbidden');
 			}
-		} else if (ticket.requesterId !== actor.id) {
+		} else if (ticket.requesterId !== actor.id || input.status !== undefined) {
+			// Requester status changes go through approve, reject and cancel only.
 			throw new ForbiddenError('forbidden');
 		}
 
@@ -84,8 +85,7 @@ export default class UpdateTicketUseCase {
 			}
 		}
 
-		const statusChanged =
-			input.adminStatus !== undefined && input.adminStatus !== ticket.adminStatus;
+		const statusChanged = input.status !== undefined && input.status !== ticket.status;
 		const changed =
 			statusChanged ||
 			(input.priority !== undefined && input.priority !== ticket.priority) ||
@@ -94,7 +94,7 @@ export default class UpdateTicketUseCase {
 
 		if (input.priority !== undefined) ticket.priority = input.priority;
 		if (targetId) ticket.departmentId = targetId;
-		if (input.adminStatus !== undefined) ticket.adminStatus = input.adminStatus;
+		if (input.status !== undefined) ticket.status = input.status;
 		const now = this.now();
 		ticket.updatedAt =
 			now.getTime() > ticket.updatedAt.getTime()
@@ -110,8 +110,7 @@ export default class UpdateTicketUseCase {
 			auditLog.authorId = actor.id;
 			auditLog.origin = actor.role;
 			auditLog.action = TicketAuditAction.AlteracaoStatus;
-			auditLog.statusType = 'admin';
-			auditLog.newStatus = ticket.adminStatus;
+			auditLog.newStatus = ticket.status;
 			await this.ticketRepository.createAuditLog(auditLog);
 		}
 		return toTicketResponse(ticket);

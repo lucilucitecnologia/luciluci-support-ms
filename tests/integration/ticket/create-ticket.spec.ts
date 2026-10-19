@@ -74,8 +74,7 @@ describe('Integration: RF05 create ticket', () => {
 				'priority',
 				'origin',
 				'originRefId',
-				'adminStatus',
-				'requesterStatus',
+				'status',
 				'createdAt',
 				'updatedAt',
 			].sort(),
@@ -89,8 +88,7 @@ describe('Integration: RF05 create ticket', () => {
 			priority: 'alta',
 			origin: 'backoffice',
 			originRefId: 'ref-1',
-			adminStatus: 'pendente',
-			requesterStatus: 'nao_resolvido',
+			status: 'pendente',
 		});
 		expect(response.body.createdAt).toBe(response.body.updatedAt);
 
@@ -124,7 +122,6 @@ describe('Integration: RF05 create ticket', () => {
 			action: 'criacao_ticket',
 			authorId: validBody.requesterId,
 			origin: 'backoffice',
-			statusType: null,
 			newStatus: null,
 		});
 	});
@@ -222,7 +219,7 @@ describe('Integration: RF05 create ticket', () => {
 		],
 		['generated id', { ...validBody, id: 'client-id' }],
 		['generated number', { ...validBody, number: 99 }],
-		['generated admin status', { ...validBody, adminStatus: 'pendente' }],
+		['generated admin status', { ...validBody, status: 'pendente' }],
 		['generated requester status', { ...validBody, requesterStatus: 'nao_resolvido' }],
 		['generated timestamp', { ...validBody, createdAt: '2026-09-17T18:00:00.000Z' }],
 	])('returns 422 for %s', async (_label, body) => {

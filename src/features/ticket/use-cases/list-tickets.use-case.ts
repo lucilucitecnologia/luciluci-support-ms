@@ -33,7 +33,7 @@ function toListedTicket(ticket: Ticket): ListedTicket {
 		origin: ticket.origin,
 		originRefId: ticket.originRefId,
 		priority: ticket.priority,
-		status: ticket.adminStatus,
+		status: ticket.status,
 	};
 }
 

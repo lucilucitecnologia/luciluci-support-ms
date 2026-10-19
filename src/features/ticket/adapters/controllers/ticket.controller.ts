@@ -5,7 +5,8 @@ import DepartmentTypeormRepository from '../../../department/adapters/repositori
 import CreateTicketUseCase from '../../use-cases/create-ticket.use-case';
 import UpdateTicketUseCase, { TicketActorRole } from '../../use-cases/update-ticket.use-case';
 import ListTicketsUseCase from '../../use-cases/list-tickets.use-case';
-import ResolveTicketUseCase from '../../use-cases/resolve-ticket.use-case';
+import RequesterTicketStatusUseCase from '../../use-cases/requester-ticket-status.use-case';
+import { RequesterStatusAction } from '../../use-cases/ticket-status-policy';
 import GetTicketUseCase from '../../use-cases/get-ticket.use-case';
 import CreateTicketMessageUseCase from '../../use-cases/create-ticket-message.use-case';
 import UpdateMessageVisibilityUseCase from '../../use-cases/update-message-visibility.use-case';
@@ -17,6 +18,7 @@ import UnprocessableEntityError from '../../../../shared/kernel/exceptions/unpro
 import { validateDto } from '../../../../shared/kernel/validation/validate-dto';
 import TicketTypeormRepository from '../repositories/ticket-typeorm.repository';
 import CreateTicketRequestDTO from './dtos/create-ticket-request.dto';
+import RequesterTicketStatusRequestDTO from './dtos/requester-ticket-status-request.dto';
 import { parseListTicketsQuery } from './dtos/list-tickets-query.dto';
 import UpdateTicketPathDTO from './dtos/update-ticket-path.dto';
 import UpdateTicketRequestDTO from './dtos/update-ticket-request.dto';
@@ -53,6 +55,58 @@ export default function buildTicketController(dataSource: DataSource) {
 			new TicketTypeormRepository(dataSource.manager),
 		).execute({ kind, actorId }, filters);
 		res.status(200).json(response);
+	}
+
+	function requesterStatusHandler(action: RequesterStatusAction, bodyAllowed: boolean) {
+		return async (req: Request, res: Response): Promise<void> => {
+			const callerId = req.performedBy;
+			const callerRole = req.performedByType;
+			if (!callerId?.trim() || !['admin', 'backoffice', 'cd'].includes(callerRole ?? '')) {
+				throw new BadRequestError('bad_request');
+			}
+			const { ticketId } = await validateDto(UpdateTicketPathDTO, req.params);
+			let input: RequesterTicketStatusRequestDTO = {};
+			if (!bodyAllowed) {
+				if (req.body !== undefined) {
+					throw new UnprocessableEntityError('validation_error', [
+						{
+							field: 'body',
+							code: 'forbidden',
+							message: 'Request body is not allowed.',
+						},
+					]);
+				}
+			} else if (req.body !== undefined) {
+				if (req.body === null || typeof req.body !== 'object' || Array.isArray(req.body)) {
+					throw new UnprocessableEntityError('validation_error', [
+						{
+							field: 'body',
+							code: 'object',
+							message: 'Request body must be a JSON object.',
+						},
+					]);
+				}
+				input = await validateDto(RequesterTicketStatusRequestDTO, req.body);
+				if (input.message === undefined && input.mediaIds !== undefined) {
+					throw new UnprocessableEntityError('validation_error', [
+						{
+							field: 'mediaIds',
+							code: 'requires_message',
+							message: 'mediaIds require a message.',
+						},
+					]);
+				}
+			}
+			const response = await dataSource.transaction((manager) =>
+				new RequesterTicketStatusUseCase(new TicketTypeormRepository(manager)).execute(
+					ticketId,
+					action,
+					input,
+					{ id: callerId, role: callerRole as TicketActorRole },
+				),
+			);
+			res.status(200).json(response);
+		};
 	}
 
 	return {
@@ -183,26 +237,9 @@ export default function buildTicketController(dataSource: DataSource) {
 			);
 			res.status(200).json(response);
 		},
-		resolve: async (req: Request, res: Response): Promise<void> => {
-			const callerId = req.performedBy;
-			const callerRole = req.performedByType;
-			if (!callerId?.trim() || !['admin', 'backoffice', 'cd'].includes(callerRole ?? '')) {
-				throw new BadRequestError('bad_request');
-			}
-			const { ticketId } = await validateDto(UpdateTicketPathDTO, req.params);
-			if (req.body !== undefined) {
-				throw new UnprocessableEntityError('validation_error', [
-					{ field: 'body', code: 'forbidden', message: 'Request body is not allowed.' },
-				]);
-			}
-			const response = await dataSource.transaction((manager) =>
-				new ResolveTicketUseCase(new TicketTypeormRepository(manager)).execute(ticketId, {
-					id: callerId,
-					role: callerRole as TicketActorRole,
-				}),
-			);
-			res.status(200).json(response);
-		},
+		approve: requesterStatusHandler('approve', false),
+		reject: requesterStatusHandler('reject', true),
+		cancel: requesterStatusHandler('cancel', true),
 		createMessage: async (req: Request, res: Response): Promise<void> => {
 			const callerId = req.performedBy;
 			const callerRole = req.performedByType;

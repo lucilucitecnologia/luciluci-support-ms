@@ -1,8 +1,7 @@
 import Department from '../../department/entities/department.entity';
-import TicketAdminStatus from './enums/ticket-admin-status.enum';
 import TicketOrigin from './enums/ticket-origin.enum';
 import TicketPriority from './enums/ticket-priority.enum';
-import TicketRequesterStatus from './enums/ticket-requester-status.enum';
+import TicketStatus from './enums/ticket-status.enum';
 
 export default class Ticket {
 	id!: string;
@@ -13,8 +12,7 @@ export default class Ticket {
 	priority!: TicketPriority;
 	origin!: TicketOrigin;
 	originRefId!: string;
-	adminStatus!: TicketAdminStatus;
-	requesterStatus!: TicketRequesterStatus;
+	status!: TicketStatus;
 	createdAt!: Date;
 	updatedAt!: Date;
 	department?: Department;

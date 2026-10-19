@@ -199,12 +199,12 @@ async function main() {
 			`/api/support/tickets/${ticket.id}`,
 			'admin-1',
 			'admin',
-			{ adminStatus: 'em_andamento' },
+			{ status: 'em_andamento' },
 		);
 		assert.equal(update.status, 200);
 		const tieCandidates = (
 			await db.query(
-				"SELECT id, action FROM ticket_audit_logs WHERE ticket_id=$1 AND (action='criacao_ticket' OR (action='alteracao_status' AND author_id='admin-1'))",
+				"SELECT id, action FROM ticket_audit_logs WHERE ticket_id=$1 AND (action='criacao_ticket' OR id=(SELECT id FROM ticket_audit_logs WHERE ticket_id=$1 AND action='alteracao_status' AND author_id='admin-1' ORDER BY datetime DESC, id DESC LIMIT 1))",
 				[ticket.id],
 			)
 		).rows;
@@ -258,7 +258,7 @@ async function main() {
 			: '';
 		const adminHistory = await history('admin-1', 'admin');
 		assert.equal(adminHistory.status, 200);
-		assert.equal(adminHistory.body.pagination.total, 7);
+		assert.equal(adminHistory.body.pagination.total, 8);
 		assert.deepEqual(
 			adminHistory.body.data.slice(0, 2).map((row) => row.action),
 			tieRows.map((row) => row.action),
@@ -287,19 +287,10 @@ async function main() {
 		);
 		assert.deepEqual(
 			Object.keys(adminHistory.body.data[0]).sort(),
-			[
-				'ticketId',
-				'number',
-				'datetime',
-				'authorId',
-				'origin',
-				'action',
-				'statusType',
-				'newStatus',
-			].sort(),
+			['ticketId', 'number', 'datetime', 'authorId', 'origin', 'action', 'newStatus'].sort(),
 		);
 		const requester = await history('owner-1', 'cd');
-		assert.equal(requester.body.pagination.total, 5);
+		assert.equal(requester.body.pagination.total, 6);
 		assert.ok(
 			requester.body.data.every(
 				(row) => row.origin !== 'admin' || row.action !== 'nova_mensagem',
@@ -315,11 +306,11 @@ async function main() {
 		assert.deepEqual((await history('owner-1', 'backoffice')).body, requester.body);
 		assert.equal(
 			(await history('owner-1', 'cd', `?ticketId=${ticket.id}`)).body.pagination.total,
-			4,
+			5,
 		);
 		assert.equal(
 			(await history('admin-1', 'admin', `?ticketId=${ticket.id}`)).body.pagination.total,
-			6,
+			7,
 		);
 		assert.equal((await history('owner-1', 'cd', `?ticketId=${foreign.id}`)).status, 403);
 		assert.equal((await history('admin-1', 'admin', `?ticketId=${foreign.id}`)).status, 403);
@@ -330,19 +321,19 @@ async function main() {
 			pagination: { page: 1, size: 20, total: 0, totalPages: 0 },
 		});
 		assert.deepEqual(
-			(await history('owner-1', 'cd', `?ticketId=${ticket.id}&page=3&size=2`)).body,
-			{ data: [], pagination: { page: 3, size: 2, total: 4, totalPages: 2 } },
+			(await history('owner-1', 'cd', `?ticketId=${ticket.id}&page=4&size=2`)).body,
+			{ data: [], pagination: { page: 4, size: 2, total: 5, totalPages: 3 } },
 		);
 		const page = await history('owner-1', 'cd', `?ticketId=${ticket.id}&page=1&size=2`);
-		assert.equal(page.body.pagination.total, 4);
+		assert.equal(page.body.pagination.total, 5);
 		assert.equal(page.body.data.length, 2);
 		const scoped = (await history('owner-1', 'cd', `?ticketId=${ticket.id}`)).body;
 		const compactPages = [];
-		for (let index = 1; index <= 4; index += 1) {
+		for (let index = 1; index <= 5; index += 1) {
 			const slice = (
 				await history('owner-1', 'cd', `?ticketId=${ticket.id}&page=${index}&size=1`)
 			).body;
-			assert.deepEqual(slice.pagination, { page: index, size: 1, total: 4, totalPages: 4 });
+			assert.deepEqual(slice.pagination, { page: index, size: 1, total: 5, totalPages: 5 });
 			compactPages.push(...slice.data);
 		}
 		assert.deepEqual(
@@ -351,25 +342,19 @@ async function main() {
 			'hidden admin audits must create no pagination gaps',
 		);
 		assert.deepEqual(
-			(await history('owner-1', 'cd', `?ticketId=${ticket.id}&page=5&size=1`)).body,
-			{ data: [], pagination: { page: 5, size: 1, total: 4, totalPages: 4 } },
+			(await history('owner-1', 'cd', `?ticketId=${ticket.id}&page=6&size=1`)).body,
+			{ data: [], pagination: { page: 6, size: 1, total: 5, totalPages: 5 } },
 		);
 		assert.ok(
 			scoped.data.some(
 				(row) =>
 					row.action === 'nova_mensagem' &&
 					row.authorId === 'owner-1' &&
-					row.statusType === null &&
 					row.newStatus === null,
 			),
 		);
 		assert.ok(
-			scoped.data.some(
-				(row) =>
-					row.action === 'criacao_ticket' &&
-					row.statusType === null &&
-					row.newStatus === null,
-			),
+			scoped.data.some((row) => row.action === 'criacao_ticket' && row.newStatus === null),
 		);
 		assert.deepEqual(
 			await snapshot(),
@@ -443,7 +428,7 @@ async function main() {
 			requester.body,
 			'RF11 must not change RF13 visibility',
 		);
-		assert.equal((await history('admin-1', 'admin')).body.pagination.total, 7);
+		assert.equal((await history('admin-1', 'admin')).body.pagination.total, 8);
 		assert.equal(
 			fs.existsSync(messageQueryLog) ? fs.readFileSync(messageQueryLog, 'utf8') : '',
 			messageQueriesAfterRf11,
@@ -504,15 +489,15 @@ async function main() {
 			'admin',
 			() =>
 				send('PATCH', `/api/support/tickets/${ticket.id}`, 'admin-1', 'admin', {
-					adminStatus: 'finalizado',
+					status: 'resolvido',
 				}),
 			1,
 		);
 		await gated(
-			'RF13_x_RF08',
+			'RF13_x_approve',
 			'owner-1',
 			'cd',
-			() => send('POST', `/api/support/tickets/${ticket.id}/resolve`, 'owner-1', 'cd'),
+			() => send('POST', `/api/support/tickets/${ticket.id}/approve`, 'owner-1', 'cd'),
 			1,
 		);
 		await gated(
@@ -533,28 +518,28 @@ async function main() {
 		assert.equal(
 			(
 				await send('PATCH', `/api/support/tickets/${ticket.id}`, 'admin-1', 'admin', {
-					adminStatus: 'finalizado',
+					status: 'finalizado',
 				})
 			).status,
 			200,
 		);
 		assert.equal(
-			(await send('POST', `/api/support/tickets/${ticket.id}/resolve`, 'owner-1', 'cd'))
+			(await send('POST', `/api/support/tickets/${ticket.id}/approve`, 'owner-1', 'cd'))
 				.status,
-			200,
+			422,
 		);
 		assert.deepEqual(
 			(await history('owner-1', 'cd')).body,
 			beforeNoOps.body,
-			'RF06/RF08 no-op must add no audit',
+			'RF06 no-op and rejected approve must add no audit',
 		);
 		const spec = await (await fetch(`${url}/api-docs-json`)).json();
 		assert.ok(spec.paths['/api/support/tickets/history']?.get);
 		assert.equal(spec.paths['/api/support/tickets/history'].get.requestBody, undefined);
 		console.log(
 			JSON.stringify({
-				adminTotal: 7,
-				requesterTotal: 5,
+				adminTotal: 8,
+				requesterTotal: 6,
 				readOnlyTables: tables,
 				physicalXminEqual: true,
 				noMessageVisibilityLookup: true,

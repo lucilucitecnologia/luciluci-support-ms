@@ -174,7 +174,7 @@ async function main() {
 			).rows[0].count,
 			'1',
 		);
-		assert.equal((await catalog.query('SELECT count(*) FROM migrations')).rows[0].count, '4');
+		assert.equal((await catalog.query('SELECT count(*) FROM migrations')).rows[0].count, '5');
 		await catalog.end();
 
 		const child = spawn(npmCommand, ['run', 'start'], {
@@ -266,9 +266,11 @@ async function main() {
 				'/api/support/tickets/history',
 				'/api/support/tickets/requester/{requesterId}',
 				'/api/support/tickets/{ticketId}',
+				'/api/support/tickets/{ticketId}/approve',
+				'/api/support/tickets/{ticketId}/cancel',
 				'/api/support/tickets/{ticketId}/messages',
 				'/api/support/tickets/{ticketId}/messages/{messageId}/visibility',
-				'/api/support/tickets/{ticketId}/resolve',
+				'/api/support/tickets/{ticketId}/reject',
 				'/health',
 				'/metrics',
 			]);
@@ -294,7 +296,8 @@ async function main() {
 		}
 		if (child.exitCode && child.exitCode !== 0)
 			throw new Error(`Compiled process exited unexpectedly: ${logs}`);
-		// A migration mais recente (origin_ref_id) é revertida antes das tabelas de Ticket.
+		// As migrations mais recentes (status único e origin_ref_id) são revertidas antes das tabelas de Ticket.
+		run(['run', 'migration:revert:dist'], env);
 		run(['run', 'migration:revert:dist'], env);
 		run(['run', 'migration:revert:dist'], env);
 		const reverted = new Client(connection);
