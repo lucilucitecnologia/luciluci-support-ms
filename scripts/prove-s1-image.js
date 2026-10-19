@@ -174,8 +174,9 @@ async function main() {
 		assert.equal(ticket.status, 201);
 		const ticketBody = await ticket.json();
 		assert.equal(ticketBody.number, 1);
-		assert.equal(ticketBody.adminStatus, 'pendente');
-		assert.equal(ticketBody.requesterStatus, 'nao_resolvido');
+		assert.equal(ticketBody.status, 'pendente');
+		assert.equal(ticketBody.adminStatus, undefined);
+		assert.equal(ticketBody.requesterStatus, undefined);
 		let adminMessageId;
 		for (const [actor, role, visible] of [
 			['uid-image-requester', 'cd', true],
@@ -243,8 +244,8 @@ async function main() {
 		};
 		const adminHistory = await imageHistory('uid-image-admin', 'admin');
 		const requesterHistory = await imageHistory('uid-image-requester', 'cd');
-		assert.equal(adminHistory.pagination.total, 4);
-		assert.equal(requesterHistory.pagination.total, 3);
+		assert.equal(adminHistory.pagination.total, 5);
+		assert.equal(requesterHistory.pagination.total, 4);
 		assert.ok(
 			adminHistory.data.some(
 				(audit) => audit.action === 'nova_mensagem' && audit.origin === 'admin',
@@ -280,7 +281,19 @@ async function main() {
 		]).stdout.trim();
 		assert.equal(storedVisibility, 't');
 		assert.equal((await ready(`${baseUrl}/health`)).status, 200);
-		const resolved = await fetch(`${baseUrl}/api/support/tickets/${ticketBody.id}/resolve`, {
+		const proposed = await fetch(`${baseUrl}/api/support/tickets/${ticketBody.id}`, {
+			method: 'PATCH',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-Correlation-ID': randomUUID(),
+				'X-Performed-By': 'uid-image-admin',
+				'X-Performed-By-Type': 'admin',
+			},
+			body: JSON.stringify({ status: 'resolvido' }),
+		});
+		assert.equal(proposed.status, 200);
+		assert.equal((await proposed.json()).status, 'resolvido');
+		const approved = await fetch(`${baseUrl}/api/support/tickets/${ticketBody.id}/approve`, {
 			method: 'POST',
 			headers: {
 				'X-Correlation-ID': randomUUID(),
@@ -288,8 +301,8 @@ async function main() {
 				'X-Performed-By-Type': 'cd',
 			},
 		});
-		assert.equal(resolved.status, 200);
-		assert.equal((await resolved.json()).requesterStatus, 'resolvido');
+		assert.equal(approved.status, 200);
+		assert.equal((await approved.json()).status, 'finalizado');
 		for (const [actor, role] of [
 			['uid-image-requester', 'backoffice'],
 			['uid-image-admin', 'admin'],
@@ -304,7 +317,7 @@ async function main() {
 			assert.equal(detail.status, 200);
 			const body = await detail.json();
 			assert.equal(body.id, ticketBody.id);
-			assert.equal(body.requesterStatus, 'resolvido');
+			assert.equal(body.status, 'finalizado');
 			assert.deepEqual(
 				Object.keys(body).sort(),
 				[
@@ -316,8 +329,7 @@ async function main() {
 					'priority',
 					'origin',
 					'originRefId',
-					'adminStatus',
-					'requesterStatus',
+					'status',
 					'createdAt',
 					'updatedAt',
 				].sort(),

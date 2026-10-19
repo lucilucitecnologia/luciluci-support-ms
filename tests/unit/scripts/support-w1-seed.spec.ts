@@ -39,7 +39,7 @@ describe('W1 canonical fixture', () => {
 
 	it('validates the exact approved manifest and timeline', () => {
 		expect(() => validateW1Fixture(W1_FIXTURE)).not.toThrow();
-		expect(W1_TABLES.map((table) => W1_FIXTURE[table].length)).toEqual([6, 7, 16, 44, 8, 80]);
+		expect(W1_TABLES.map((table) => W1_FIXTURE[table].length)).toEqual([6, 7, 16, 44, 8, 98]);
 		expect(Object.values(W1_ACTORS)).toHaveLength(8);
 		expect(W1_SCENARIOS.map((scenario) => scenario.key)).toEqual(
 			Array.from({ length: 16 }, (_, index) => 'T' + String(index + 1).padStart(2, '0')),
@@ -68,35 +68,48 @@ describe('W1 canonical fixture', () => {
 				scenario.department,
 				scenario.requester.replace('seed-', ''),
 				scenario.priority,
-				scenario.adminStatus,
-				scenario.requesterResolved,
+				scenario.status,
 				scenario.followUp,
-				scenario.adminTransitions.length,
+				scenario.steps.map((step) => step.by[0] + ':' + step.status),
 			]),
 		).toEqual([
-			['D01', 'backoffice-a', 'baixa', 'cancelado', true, true, 1],
-			['D01', 'backoffice-a', 'media', 'em_andamento', true, true, 1],
-			['D01', 'backoffice-a', 'alta', 'finalizado', false, true, 1],
-			['D02', 'backoffice-a', 'urgente', 'resolvido', true, true, 1],
-			['D02', 'backoffice-b', 'baixa', 'cancelado', true, true, 1],
-			['D02', 'backoffice-b', 'media', 'em_andamento', false, true, 1],
-			['D03', 'backoffice-b', 'alta', 'finalizado', true, true, 1],
-			['D03', 'backoffice-b', 'urgente', 'resolvido', true, true, 1],
-			['D03', 'cd-a', 'baixa', 'cancelado', false, true, 1],
-			['D04', 'cd-a', 'media', 'em_andamento', true, true, 1],
-			['D04', 'cd-a', 'alta', 'finalizado', true, true, 1],
-			['D04', 'cd-a', 'urgente', 'resolvido', false, true, 1],
-			['D05', 'cd-b', 'baixa', 'pendente', false, false, 2],
-			['D05', 'cd-b', 'media', 'pendente', false, false, 2],
-			['D06', 'cd-b', 'alta', 'pendente', false, false, 0],
-			['D06', 'cd-b', 'urgente', 'pendente', false, false, 0],
+			['D01', 'backoffice-a', 'baixa', 'cancelado', true, ['r:cancelado']],
+			['D01', 'backoffice-a', 'media', 'em_andamento', true, []],
+			['D01', 'backoffice-a', 'alta', 'finalizado', true, ['a:resolvido', 'r:finalizado']],
+			['D02', 'backoffice-a', 'urgente', 'resolvido', true, ['a:resolvido']],
+			['D02', 'backoffice-b', 'baixa', 'cancelado', true, ['a:cancelado']],
+			[
+				'D02',
+				'backoffice-b',
+				'media',
+				'em_andamento',
+				true,
+				['a:resolvido', 'r:pendente', 'a:em_andamento'],
+			],
+			['D03', 'backoffice-b', 'alta', 'finalizado', true, ['a:finalizado']],
+			['D03', 'backoffice-b', 'urgente', 'resolvido', true, ['a:resolvido']],
+			['D03', 'cd-a', 'baixa', 'cancelado', true, ['a:pendente', 'r:cancelado']],
+			['D04', 'cd-a', 'media', 'em_andamento', true, ['a:pendente', 'a:em_andamento']],
+			[
+				'D04',
+				'cd-a',
+				'alta',
+				'finalizado',
+				true,
+				['a:resolvido', 'r:pendente', 'a:em_andamento', 'a:resolvido', 'r:finalizado'],
+			],
+			['D04', 'cd-a', 'urgente', 'resolvido', true, ['a:pendente', 'a:resolvido']],
+			['D05', 'cd-b', 'baixa', 'pendente', false, ['a:pendente']],
+			['D05', 'cd-b', 'media', 'pendente', false, ['a:pendente']],
+			['D06', 'cd-b', 'alta', 'pendente', false, ['a:pendente']],
+			['D06', 'cd-b', 'urgente', 'pendente', false, ['a:resolvido', 'r:pendente']],
 		]);
 	});
 
 	it('rejects a changed final status and invalid internal UUID before I/O', () => {
 		const changed = structuredClone(W1_FIXTURE);
-		changed.tickets[0].admin_status = 'pendente';
-		expect(() => validateW1Fixture(changed)).toThrow(/adminStatus/);
+		changed.tickets[0].status = 'pendente';
+		expect(() => validateW1Fixture(changed)).toThrow(/Ticket status/);
 		const invalidId = structuredClone(W1_FIXTURE);
 		invalidId.tickets[0].id = 'not-a-uuid';
 		expect(() => validateW1Fixture(invalidId)).toThrow(/UUID v4/);

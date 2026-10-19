@@ -503,12 +503,16 @@ async function main() {
 			).rows.map((row) => row.media_id),
 			['x', 'x'],
 		);
-		assert.equal(after.audits.length, before.audits.length + 1);
+		// The admin message also writes a status audit when it finds the ticket pendente.
+		assert.equal(
+			after.audits.length,
+			before.audits.length + (before.ticket.status === 'pendente' ? 2 : 1),
+		);
 		assert.ok(after.ticket.updated_at > before.ticket.updated_at);
 		before = await snapshot();
-		responses = await concurrent('RF11_x_RF08', [
+		responses = await concurrent('RF11_x_cancel', [
 			() => patch(ticket.id, message.id, true),
-			() => send('POST', `/api/support/tickets/${ticket.id}/resolve`, 'owner-1', 'cd'),
+			() => send('POST', `/api/support/tickets/${ticket.id}/cancel`, 'owner-1', 'cd'),
 		]);
 		assert.deepEqual(
 			responses.map((r) => r.status),
@@ -516,7 +520,7 @@ async function main() {
 		);
 		after = await snapshot();
 		assert.equal(after.message.is_visible_to_requester, true);
-		assert.equal(after.ticket.requester_status, 'resolvido');
+		assert.equal(after.ticket.status, 'cancelado');
 		assert.equal(after.audits.length, before.audits.length + 1);
 		assert.ok(after.ticket.updated_at > before.ticket.updated_at);
 		before = await snapshot();

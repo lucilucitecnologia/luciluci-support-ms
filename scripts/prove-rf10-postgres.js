@@ -242,9 +242,9 @@ async function main() {
 				);
 				assert.equal(createdMessage.isVisibleToRequester, visible);
 				const next = await snapshot();
-				assertDelta(previous, next, 1, 0, 1);
-				assert.equal(next.ticket[0].admin_status, previous.ticket[0].admin_status);
-				assert.equal(next.ticket[0].requester_status, previous.ticket[0].requester_status);
+				// The first admin reply on a pendente ticket also writes a status audit.
+				assertDelta(previous, next, 1, 0, visible ? 2 : 1);
+				assert.equal(next.ticket[0].status, 'em_andamento');
 				previous = next;
 			}
 			const requester = await post(
@@ -258,7 +258,7 @@ async function main() {
 			assert.deepEqual(requesterMessage.mediaIds, ['a', 'b', 'a']);
 			let next = await snapshot();
 			assertDelta(previous, next, 1, 3, 2);
-			assert.equal(next.ticket[0].admin_status, 'pendente');
+			assert.equal(next.ticket[0].status, 'pendente');
 			assert.deepEqual(
 				next.media
 					.filter((m) => m.ticket_message_id === requesterMessage.id)
@@ -269,7 +269,7 @@ async function main() {
 					[2, 'a'],
 				],
 			);
-			assert.equal(next.audits.filter((a) => a.action === 'alteracao_status').length, 1);
+			assert.equal(next.audits.filter((a) => a.action === 'alteracao_status').length, 2);
 			previous = next;
 			assert.equal(
 				(
@@ -286,7 +286,7 @@ async function main() {
 			assertDelta(previous, next, 1, 3, 2);
 			assert.equal(
 				next.audits.filter((a) => a.action === 'alteracao_status').length,
-				2,
+				3,
 				'already pending must still audit',
 			);
 			previous = next;
@@ -543,21 +543,19 @@ async function main() {
 										'nova_mensagem',
 										'nova_mensagem',
 									]
-								: ['nova_mensagem', 'nova_mensagem'],
+								: ['alteracao_status', 'nova_mensagem', 'nova_mensagem'],
 						);
 						if (name === 'RF10_requester_x_requester') {
 							for (const audit of newAudits.filter(
 								(entry) => entry.action === 'alteracao_status',
 							)) {
-								assert.equal(audit.status_type, 'admin');
 								assert.equal(audit.new_status, 'pendente');
 							}
-							assert.equal(after.ticket[0].admin_status, 'pendente');
+							assert.equal(after.ticket[0].status, 'pendente');
 						} else {
-							assert.equal(
-								after.ticket[0].admin_status,
-								before.ticket[0].admin_status,
-							);
+							// pendente -> em_andamento by the first admin message only.
+							assert.equal(before.ticket[0].status, 'pendente');
+							assert.equal(after.ticket[0].status, 'em_andamento');
 						}
 					}
 					console.log(
@@ -567,8 +565,7 @@ async function main() {
 							messages: expectedMessages,
 							media: expectedMedia,
 							audits: expectedAudits,
-							adminStatus: after.ticket[0].admin_status,
-							requesterStatus: after.ticket[0].requester_status,
+							status: after.ticket[0].status,
 							deadlock: false,
 						}),
 					);
@@ -603,14 +600,13 @@ async function main() {
 					() => post(ticket.id, 'admin-1', 'admin', body('admin-1', 'admin', false)),
 				],
 				2,
-				2,
+				3,
 			);
-			const beforeMixed = await snapshot();
 			const rf06 = () =>
 				fetch(`${url}/api/support/tickets/${ticket.id}`, {
 					method: 'PATCH',
 					headers: { ...headers('admin-1', 'admin'), 'Content-Type': 'application/json' },
-					body: JSON.stringify({ adminStatus: 'finalizado' }),
+					body: JSON.stringify({ status: 'resolvido' }),
 				});
 			const mixed = await concurrent(
 				'RF10_x_RF06',
@@ -619,23 +615,50 @@ async function main() {
 				3,
 				[201, 200],
 			);
-			assert.ok(['pendente', 'finalizado'].includes(mixed.ticket[0].admin_status));
-			assert.equal(mixed.ticket[0].requester_status, beforeMixed.ticket[0].requester_status);
-			const rf08 = () =>
-				fetch(`${url}/api/support/tickets/${ticket.id}/resolve`, {
-					method: 'POST',
-					headers: headers('owner-1', 'cd'),
-				});
-			const beforeResolve = await snapshot();
-			const combined = await concurrent(
-				'RF10_x_RF08',
-				[() => post(ticket.id, 'owner-1', 'cd', body('owner-1', 'cd')), rf08],
-				1,
-				beforeResolve.ticket[0].requester_status === 'resolvido' ? 2 : 3,
-				[201, 200],
+			// Whichever lock order wins, the final status is the later writer's.
+			assert.ok(['pendente', 'resolvido'].includes(mixed.ticket[0].status));
+			// A requester cancel and a requester message race on the Ticket lock: the message either
+			// lands first (201, reopening pendente before the cancel) or finds the Ticket closed (422).
+			await db.query("UPDATE tickets SET status='em_andamento' WHERE id=$1", [ticket.id]);
+			const beforeCancel = await snapshot();
+			lock = new Client({ ...config, database: proof.database });
+			await lock.connect();
+			await lock.query('BEGIN');
+			await lock.query('SELECT id FROM tickets WHERE id=$1 FOR UPDATE', [ticket.id]);
+			try {
+				const pending = [
+					post(ticket.id, 'owner-1', 'cd', body('owner-1', 'cd')),
+					fetch(`${url}/api/support/tickets/${ticket.id}/cancel`, {
+						method: 'POST',
+						headers: headers('owner-1', 'cd'),
+					}),
+				];
+				await new Promise((resolve) => setTimeout(resolve, 150));
+				await lock.query('COMMIT');
+				const [messageResponse, cancelResponse] = await bounded(
+					Promise.all(pending),
+					'RF10_x_cancel',
+				);
+				const afterCancel = await snapshot();
+				assert.equal(cancelResponse.status, 200);
+				assert.equal(afterCancel.ticket[0].status, 'cancelado');
+				if (messageResponse.status === 201) {
+					assertDelta(beforeCancel, afterCancel, 1, 0, 3);
+				} else {
+					assert.equal(messageResponse.status, 422);
+					assert.equal(afterCancel.messages.length, beforeCancel.messages.length);
+					assert.equal(afterCancel.audits.length - beforeCancel.audits.length, 1);
+				}
+			} finally {
+				await lock.query('ROLLBACK').catch(() => undefined);
+				await lock.end().catch(() => undefined);
+				lock = undefined;
+			}
+			assert.equal(
+				(await post(ticket.id, 'owner-1', 'cd', body('owner-1', 'cd'))).status,
+				422,
+				'closed ticket must reject messages',
 			);
-			assert.equal(combined.ticket[0].admin_status, 'pendente');
-			assert.equal(combined.ticket[0].requester_status, 'resolvido');
 			console.log(
 				'RF10 PostgreSQL compiled process, atomicity, ACL, audit cardinality, rollback and concurrency proof OK',
 			);

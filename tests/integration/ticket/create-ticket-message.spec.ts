@@ -94,7 +94,7 @@ describe('Integration: RF10 create TicketMessage', () => {
 	afterAll(destroyTestDataSource);
 
 	it.each([true, false])(
-		'creates admin visibility %s with one audit and only updatedAt changed',
+		'creates admin visibility %s moving a pending ticket to em_andamento with two audits',
 		async (visible) => {
 			const before = await state();
 			const response = await post('admin-1', 'admin', body('admin', 'admin-1', visible));
@@ -120,19 +120,25 @@ describe('Integration: RF10 create TicketMessage', () => {
 				isVisibleToRequester: visible,
 			});
 			const after = await state();
-			expect(after.ticket.adminStatus).toBe(before.ticket.adminStatus);
-			expect(after.ticket.requesterStatus).toBe(before.ticket.requesterStatus);
+			expect(before.ticket.status).toBe('pendente');
+			expect(after.ticket.status).toBe('em_andamento');
 			expect(after.ticket.updatedAt.getTime()).toBeGreaterThan(
 				before.ticket.updatedAt.getTime(),
 			);
 			expect(after.messages).toHaveLength(2);
-			expect(after.audits).toHaveLength(2);
+			expect(after.audits).toHaveLength(3);
 			expect(after.audits.find((audit) => audit.action === 'nova_mensagem')).toMatchObject({
 				authorId: 'admin-1',
 				origin: 'admin',
-				statusType: null,
 				newStatus: null,
 			});
+			expect(after.audits.find((audit) => audit.action === 'alteracao_status')).toMatchObject(
+				{
+					authorId: 'admin-1',
+					origin: 'admin',
+					newStatus: 'em_andamento',
+				},
+			);
 			expect(after.media).toHaveLength(0);
 		},
 	);
@@ -141,16 +147,14 @@ describe('Integration: RF10 create TicketMessage', () => {
 		'creates owner %s message with ordered duplicate media and two audits',
 		async (role) => {
 			await TestDataSource.getRepository(Ticket).update(ticketId, {
-				adminStatus: 'em_andamento' as Ticket['adminStatus'],
-				requesterStatus: 'resolvido' as Ticket['requesterStatus'],
+				status: 'em_andamento' as Ticket['status'],
 			});
 			const before = await state();
 			const response = await post(owner, role, body(role, owner, true, ['a', 'b', 'a']));
 			expect(response.status).toBe(201);
 			expect(response.body.mediaIds).toEqual(['a', 'b', 'a']);
 			const after = await state();
-			expect(after.ticket.adminStatus).toBe('pendente');
-			expect(after.ticket.requesterStatus).toBe('resolvido');
+			expect(after.ticket.status).toBe('pendente');
 			expect(after.ticket.updatedAt.getTime()).toBeGreaterThan(
 				before.ticket.updatedAt.getTime(),
 			);
@@ -168,7 +172,7 @@ describe('Integration: RF10 create TicketMessage', () => {
 				1,
 			);
 			expect(after.audits.find((audit) => audit.action === 'alteracao_status')).toMatchObject(
-				{ authorId: owner, origin: role, statusType: 'admin', newStatus: 'pendente' },
+				{ authorId: owner, origin: role, newStatus: 'pendente' },
 			);
 		},
 	);
@@ -179,7 +183,7 @@ describe('Integration: RF10 create TicketMessage', () => {
 		const first = await state();
 		expect((await post(owner, 'cd', payload)).status).toBe(201);
 		const second = await state();
-		expect(first.ticket.adminStatus).toBe('pendente');
+		expect(first.ticket.status).toBe('pendente');
 		expect(second.ticket.updatedAt.getTime()).toBeGreaterThan(first.ticket.updatedAt.getTime());
 		expect(second.messages).toHaveLength(first.messages.length + 1);
 		expect(second.media).toHaveLength(first.media.length + 2);
@@ -188,6 +192,36 @@ describe('Integration: RF10 create TicketMessage', () => {
 			2,
 		);
 	});
+
+	it('does not change status or add a status audit for an admin message after em_andamento', async () => {
+		await TestDataSource.getRepository(Ticket).update(ticketId, {
+			status: 'em_andamento' as Ticket['status'],
+		});
+		const before = await state();
+		expect((await post('admin-1', 'admin', body('admin', 'admin-1'))).status).toBe(201);
+		const after = await state();
+		expect(after.ticket.status).toBe('em_andamento');
+		expect(after.audits).toHaveLength(before.audits.length + 1);
+	});
+
+	it.each(['finalizado', 'cancelado'])(
+		'rejects admin and owner messages on %s tickets with 422 ticket_closed and no write',
+		async (status) => {
+			await TestDataSource.getRepository(Ticket).update(ticketId, {
+				status: status as Ticket['status'],
+			});
+			const before = await state();
+			for (const [actor, role] of [
+				['admin-1', 'admin'],
+				[owner, 'cd'],
+			] as const) {
+				const response = await post(actor, role, body(role, actor));
+				expect(response.status).toBe(422);
+				expect(response.body.message).toBe('ticket_closed');
+			}
+			expect(await state()).toEqual(before);
+		},
+	);
 
 	it('allows historical inactive Department for admin member and owner', async () => {
 		await TestDataSource.getRepository(Department).update(departmentId, { active: false });

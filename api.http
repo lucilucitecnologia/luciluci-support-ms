@@ -640,50 +640,53 @@ GET {{baseUrl}}/api/support/tickets/{{ticketId}}
 X-Performed-By: {{requesterId}}
 X-Performed-By-Type: cd
 
-### RF08 - Owner backoffice resolves without body
-POST {{baseUrl}}/api/support/tickets/{{ticketId}}/resolve
+# Requester status changes: approve (resolvido -> finalizado), reject (resolvido -> pendente)
+# and cancel (pendente|em_andamento -> cancelado). Admins change status through PATCH.
+
+### RF08 - Owner approves the resolution without body
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/approve
 X-Correlation-ID: {{correlationId}}
 X-Performed-By: {{requesterId}}
 X-Performed-By-Type: backoffice
 
-### RF08 - Owner cd resolves without body (origin may differ)
-POST {{baseUrl}}/api/support/tickets/{{ticketId}}/resolve
+### RF08 - Owner cd approves (origin may differ)
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/approve
 X-Correlation-ID: {{correlationId}}
 X-Performed-By: {{requesterId}}
 X-Performed-By-Type: cd
 
-### RF08 - Retry already resolved, 200 no-op
-POST {{baseUrl}}/api/support/tickets/{{ticketId}}/resolve
+### RF08 - Approve a ticket that is not resolvido, 422 invalid_status_transition
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/approve
 X-Correlation-ID: {{correlationId}}
 X-Performed-By: {{requesterId}}
 X-Performed-By-Type: cd
 
 ### RF08 - Admin forbidden
-POST {{baseUrl}}/api/support/tickets/{{ticketId}}/resolve
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/approve
 X-Correlation-ID: {{correlationId}}
 X-Performed-By: {{adminId}}
 X-Performed-By-Type: admin
 
 ### RF08 - Non-owner forbidden
-POST {{baseUrl}}/api/support/tickets/{{ticketId}}/resolve
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/approve
 X-Correlation-ID: {{correlationId}}
 X-Performed-By: uid-other
 X-Performed-By-Type: cd
 
 ### RF08 - Invalid ticket UUID
-POST {{baseUrl}}/api/support/tickets/invalid/resolve
+POST {{baseUrl}}/api/support/tickets/invalid/approve
 X-Correlation-ID: {{correlationId}}
 X-Performed-By: {{requesterId}}
 X-Performed-By-Type: cd
 
 ### RF08 - Missing Ticket
-POST {{baseUrl}}/api/support/tickets/919cf070-ea36-41df-9382-e44d541f8005/resolve
+POST {{baseUrl}}/api/support/tickets/919cf070-ea36-41df-9382-e44d541f8005/approve
 X-Correlation-ID: {{correlationId}}
 X-Performed-By: {{requesterId}}
 X-Performed-By-Type: cd
 
-### RF08 - Any body present is invalid, including {}
-POST {{baseUrl}}/api/support/tickets/{{ticketId}}/resolve
+### RF08 - Any body present is invalid on approve, including {}
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/approve
 X-Correlation-ID: {{correlationId}}
 X-Performed-By: {{requesterId}}
 X-Performed-By-Type: cd
@@ -691,24 +694,66 @@ Content-Type: application/json
 
 {}
 
-### RF08 - Body with field is invalid
-POST {{baseUrl}}/api/support/tickets/{{ticketId}}/resolve
+### RF08 - Missing actor
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/approve
+X-Correlation-ID: {{correlationId}}
+
+### RF08 - Invalid role
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/approve
+X-Correlation-ID: {{correlationId}}
+X-Performed-By: {{requesterId}}
+X-Performed-By-Type: requester
+
+### RF08b - Reject the resolution without message
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/reject
+X-Correlation-ID: {{correlationId}}
+X-Performed-By: {{requesterId}}
+X-Performed-By-Type: cd
+
+### RF08b - Reject the resolution with message
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/reject
 X-Correlation-ID: {{correlationId}}
 X-Performed-By: {{requesterId}}
 X-Performed-By-Type: cd
 Content-Type: application/json
 
-{"status":"resolvido"}
+{ "message": "A solução não resolveu o problema." }
 
-### RF08 - Missing actor
-POST {{baseUrl}}/api/support/tickets/{{ticketId}}/resolve
-X-Correlation-ID: {{correlationId}}
-
-### RF08 - Invalid role
-POST {{baseUrl}}/api/support/tickets/{{ticketId}}/resolve
+### RF08b - Reject with mediaIds but no message, 422
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/reject
 X-Correlation-ID: {{correlationId}}
 X-Performed-By: {{requesterId}}
-X-Performed-By-Type: requester
+X-Performed-By-Type: cd
+Content-Type: application/json
+
+{ "mediaIds": ["media-1"] }
+
+### RF08b - Reject a ticket that is not resolvido, 422 invalid_status_transition
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/reject
+X-Correlation-ID: {{correlationId}}
+X-Performed-By: {{requesterId}}
+X-Performed-By-Type: cd
+
+### RF08c - Cancel the ticket without message
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/cancel
+X-Correlation-ID: {{correlationId}}
+X-Performed-By: {{requesterId}}
+X-Performed-By-Type: cd
+
+### RF08c - Cancel the ticket with message
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/cancel
+X-Correlation-ID: {{correlationId}}
+X-Performed-By: {{requesterId}}
+X-Performed-By-Type: cd
+Content-Type: application/json
+
+{ "message": "Não preciso mais deste chamado." }
+
+### RF08c - Cancel a resolvido/finalizado/cancelado ticket, 422 invalid_status_transition
+POST {{baseUrl}}/api/support/tickets/{{ticketId}}/cancel
+X-Correlation-ID: {{correlationId}}
+X-Performed-By: {{requesterId}}
+X-Performed-By-Type: cd
 
 ### RF07a - List owned tickets with defaults
 GET {{baseUrl}}/api/support/tickets/requester/{{requesterId}}
@@ -1043,7 +1088,7 @@ X-Performed-By-Type: admin
 
 {
   "priority": "urgente",
-  "adminStatus": "em_andamento"
+  "status": "em_andamento"
 }
 
 ### RF06 - Requester transfers to an active department
@@ -1065,10 +1110,10 @@ X-Performed-By: uid-admin-1
 X-Performed-By-Type: admin
 
 {
-  "adminStatus": "em_andamento"
+  "status": "em_andamento"
 }
 
-### RF06 - Requester status is reserved for RF08 (422)
+### RF06 - Requester cannot change status via PATCH (403); use approve, reject or cancel
 PATCH {{baseUrl}}/api/support/tickets/{{ticketId}}
 Content-Type: application/json
 X-Correlation-ID: {{correlationId}}
@@ -1076,7 +1121,7 @@ X-Performed-By: uid-requester-1
 X-Performed-By-Type: cd
 
 {
-  "requesterStatus": "resolvido"
+  "status": "cancelado"
 }
 
 ### Metrics

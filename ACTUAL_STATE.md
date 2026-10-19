@@ -1,5 +1,56 @@
 # ACTUAL_STATE
 
+## Status único do Ticket — develop, local
+
+Os campos `adminStatus` e `requesterStatus` foram unificados em `Ticket.status`
+(`pendente`, `em_andamento`, `resolvido`, `finalizado`, `cancelado`), por
+autorização do time. Fluxo ITIL: o atendente propõe a solução (`resolvido`) e o
+solicitante aprova (`finalizado`) ou reprova (`pendente`).
+
+Regras: **admin** (membership) altera `status` livremente pelo `PATCH` (RF06).
+O **solicitante dono** não altera `status` pelo `PATCH` (`403`, mesmo sem
+conflito de ACL); usa três ações exclusivas, cada uma com um audit
+`alteracao_status` e `422 invalid_status_transition` fora da origem permitida
+(inclusive repetida): `POST /tickets/{id}/approve` (`resolvido → finalizado`,
+sem corpo), `POST /tickets/{id}/reject` (`resolvido → pendente`) e
+`POST /tickets/{id}/cancel` (`pendente|em_andamento → cancelado`). `reject` e
+`cancel` aceitam `message` e `mediaIds` opcionais (`mediaIds` exige `message`);
+com mensagem criam uma `TicketMessage` visível e um audit `nova_mensagem`
+adicional. O antigo `POST /tickets/{id}/resolve` (RF08) foi removido.
+
+Mensagens (RF10): ticket `finalizado` ou `cancelado` retorna `422 ticket_closed`
+para qualquer papel (após a ACL). Mensagem do solicitante leva o ticket a
+`pendente` com os 2 audits de sempre; a primeira mensagem do admin num ticket
+`pendente` o leva a `em_andamento` e grava um `alteracao_status` extra.
+
+Persistência: migration `1768030000000-UnifyTicketStatus` cria `tickets.status`
+com backfill (`requester_status=resolvido` com admin ainda `pendente` ou
+`em_andamento` vira `resolvido`; nos demais casos vale `admin_status`), remove
+`admin_status`, `requester_status` e `ticket_audit_logs.status_type` e recria as
+CHECK. Os audits antigos mantêm `new_status`; a distinção admin/requester se
+perde (`down` é melhor esforço e devolve `status_type='admin'`). Respostas de
+Ticket e do histórico (RF13) perdem `adminStatus`, `requesterStatus` e
+`statusType`.
+
+Seed W1 redesenhada (opção 2, aprovada): 16 Tickets com `status` final e `steps`
+no fluxo ITIL; volumes agora 6 Departments / 7 memberships / 16 Tickets /
+44 Messages / 8 Media / **98** AuditLogs (criação 16, `nova_mensagem` 28,
+`alteracao_status` 54). O volume 80 do report W1 está superado.
+
+**Mudança incompatível**: `openapi:compat` do CI falha contra a baseline
+(propriedades removidas e path `/resolve` removido). O script não foi
+enfraquecido; exige aceite explícito antes de integrar em `main`. O BFF que
+consome `adminStatus`/`requesterStatus`/`/resolve` precisa ser ajustado.
+
+Limites: o contrato canônico em `luciluci-docs` (PRD/TDD/TP/notes, que ainda
+descrevem §9.2 "Independência dos status", RF08 e P3–P5) **não** foi atualizado.
+Evidência local: `tsc`, ESLint, Prettier, `openapi:check` e suíte completa
+(37 suítes, 372 testes, SQLite de teste); migration `up`/`down` em PostgreSQL 16
+descartável com dados legados mistos; `proof:rf01…rf13`, `proof:seed:w1` e
+`proof:s1:image` passaram em PostgreSQL descartável local (`TZ=UTC`). Os
+scripts `prove-rf08` e parte dos demais foram reescritos para as novas regras.
+Sem deploy e sem commit nesta fotografia.
+
 ## `originRefId` obrigatório em Ticket — develop, local
 
 Na branch `develop`, `Ticket` ganhou `originRefId`: referência opaca à entidade

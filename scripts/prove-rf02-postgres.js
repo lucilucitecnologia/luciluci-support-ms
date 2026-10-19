@@ -473,7 +473,8 @@ async function main() {
 			}
 		}
 
-		// A migration mais recente (origin_ref_id) é revertida antes das tabelas de Ticket.
+		// As migrations mais recentes (status único e origin_ref_id) são revertidas antes das tabelas de Ticket.
+		run(['run', 'migration:revert:dist'], env);
 		run(['run', 'migration:revert:dist'], env);
 		run(['run', 'migration:revert:dist'], env);
 		const reverted = new Client(connection);

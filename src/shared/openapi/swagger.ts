@@ -172,7 +172,6 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						'authorId',
 						'origin',
 						'action',
-						'statusType',
 						'newStatus',
 					],
 					properties: {
@@ -185,7 +184,6 @@ const swaggerOptions: swaggerJSDoc.Options = {
 							type: 'string',
 							enum: ['criacao_ticket', 'nova_mensagem', 'alteracao_status'],
 						},
-						statusType: { type: 'string', nullable: true },
 						newStatus: { type: 'string', nullable: true },
 					},
 				},
@@ -237,9 +235,26 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						},
 					},
 				},
-				TicketAdminStatus: {
+				TicketStatus: {
 					type: 'string',
-					enum: ['pendente', 'cancelado', 'em_andamento', 'finalizado', 'resolvido'],
+					enum: ['pendente', 'em_andamento', 'resolvido', 'finalizado', 'cancelado'],
+				},
+				RequesterTicketStatusRequest: {
+					type: 'object',
+					additionalProperties: false,
+					properties: {
+						message: {
+							type: 'string',
+							pattern: '\\S',
+							description:
+								'Optional message, always visible to the requester. When present it is created with the status change and writes an extra nova_mensagem audit.',
+						},
+						mediaIds: {
+							type: 'array',
+							items: { type: 'string' },
+							description: 'Requires message.',
+						},
+					},
 				},
 				UpdateTicketRequest: {
 					type: 'object',
@@ -248,7 +263,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 					properties: {
 						priority: { $ref: '#/components/schemas/TicketPriority' },
 						departmentId: { type: 'string', format: 'uuid' },
-						adminStatus: { $ref: '#/components/schemas/TicketAdminStatus' },
+						status: { $ref: '#/components/schemas/TicketStatus' },
 					},
 				},
 				CreatedTicket: {
@@ -263,8 +278,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						'priority',
 						'origin',
 						'originRefId',
-						'adminStatus',
-						'requesterStatus',
+						'status',
 						'createdAt',
 						'updatedAt',
 					],
@@ -281,8 +295,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 							description:
 								'Opaque id of the entity behind the origin (e.g. CD id or consultant id). Required on creation, immutable, informational only; not used for authorization. Filterable on RF07a/RF07b.',
 						},
-						adminStatus: { type: 'string', enum: ['pendente'] },
-						requesterStatus: { type: 'string', enum: ['nao_resolvido'] },
+						status: { type: 'string', enum: ['pendente'] },
 						createdAt: { type: 'string', format: 'date-time' },
 						updatedAt: { type: 'string', format: 'date-time' },
 					},
@@ -299,8 +312,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						'priority',
 						'origin',
 						'originRefId',
-						'adminStatus',
-						'requesterStatus',
+						'status',
 						'createdAt',
 						'updatedAt',
 					],
@@ -317,8 +329,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 							description:
 								'Opaque id of the entity behind the origin (e.g. CD id or consultant id). Required on creation, immutable, informational only; not used for authorization. Filterable on RF07a/RF07b.',
 						},
-						adminStatus: { $ref: '#/components/schemas/TicketAdminStatus' },
-						requesterStatus: { type: 'string', enum: ['nao_resolvido'] },
+						status: { $ref: '#/components/schemas/TicketStatus' },
 						createdAt: { type: 'string', format: 'date-time' },
 						updatedAt: { type: 'string', format: 'date-time' },
 					},
@@ -335,8 +346,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						'priority',
 						'origin',
 						'originRefId',
-						'adminStatus',
-						'requesterStatus',
+						'status',
 						'createdAt',
 						'updatedAt',
 					],
@@ -353,11 +363,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 							description:
 								'Opaque id of the entity behind the origin (e.g. CD id or consultant id). Required on creation, immutable, informational only; not used for authorization. Filterable on RF07a/RF07b.',
 						},
-						adminStatus: { $ref: '#/components/schemas/TicketAdminStatus' },
-						requesterStatus: {
-							type: 'string',
-							enum: ['nao_resolvido', 'resolvido'],
-						},
+						status: { $ref: '#/components/schemas/TicketStatus' },
 						createdAt: { type: 'string', format: 'date-time' },
 						updatedAt: { type: 'string', format: 'date-time' },
 					},
@@ -391,7 +397,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 								'Opaque id of the entity behind the origin (e.g. CD id or consultant id). Required on creation, immutable, informational only; not used for authorization. Filterable on RF07a/RF07b.',
 						},
 						priority: { $ref: '#/components/schemas/TicketPriority' },
-						status: { $ref: '#/components/schemas/TicketAdminStatus' },
+						status: { $ref: '#/components/schemas/TicketStatus' },
 					},
 				},
 				TicketListResponse: {
@@ -637,9 +643,9 @@ const swaggerOptions: swaggerJSDoc.Options = {
 					},
 				},
 				patch: {
-					summary: 'Update ticket priority, department, or admin status',
+					summary: 'Update ticket priority, department, or status',
 					description:
-						'Locks Ticket, then relevant Departments in UUID order. Admin needs current and target membership; requester needs ownership. No-op preserves updatedAt. A changed adminStatus writes one audit in the transaction.',
+						'Locks Ticket, then relevant Departments in UUID order. Admin needs current and target membership and may set any status. Requester needs ownership and may not send status (403): requester status changes use approve, reject and cancel. No-op preserves updatedAt. A changed status writes one audit in the transaction.',
 					tags: ['Tickets'],
 					parameters: [
 						{ $ref: '#/components/parameters/CorrelationIdHeader' },
@@ -805,7 +811,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 				post: {
 					summary: 'Create a Ticket message',
 					description:
-						'RF10. Body authorId/type must match actor headers. Admin needs current Department membership and may create an internal message. Requester owner must send a visible message. Every POST creates a new message; requester messages assign adminStatus=pendente and write two audits even if already pending. Ticket is locked before Department; all writes are atomic.',
+						'RF10. Body authorId/type must match actor headers. Admin needs current Department membership and may create an internal message. Requester owner must send a visible message. Every POST creates a new message; closed tickets (finalizado, cancelado) reject messages with 422 ticket_closed. Requester messages assign status=pendente and write two audits even if already pending. The first admin message on a pendente ticket moves it to em_andamento and writes an alteracao_status audit. Ticket is locked before Department; all writes are atomic.',
 					tags: ['Tickets'],
 					parameters: [
 						{ $ref: '#/components/parameters/CorrelationIdHeader' },
@@ -931,11 +937,11 @@ const swaggerOptions: swaggerJSDoc.Options = {
 					},
 				},
 			},
-			'/api/support/tickets/{ticketId}/resolve': {
+			'/api/support/tickets/{ticketId}/approve': {
 				post: {
-					summary: 'Resolve a Ticket as its requester',
+					summary: 'Approve the resolution of a Ticket as its requester',
 					description:
-						'RF08. Requester owner only; backoffice or cd role need not match Ticket origin. No request body. Locks Ticket, changes requesterStatus and writes one requester audit atomically. Already resolved is a no-op.',
+						'Requester approves the proposed solution: resolvido -> finalizado. Requester owner only; backoffice or cd role need not match Ticket origin. Locks Ticket, changes status and writes the alteracao_status audit atomically. No request body. Any other current status returns 422.',
 					tags: ['Tickets'],
 					parameters: [
 						{ $ref: '#/components/parameters/CorrelationIdHeader' },
@@ -950,7 +956,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 					],
 					responses: {
 						'200': {
-							description: 'Complete Ticket after resolution or authorized no-op.',
+							description: 'Complete Ticket after the status change.',
 							content: {
 								'application/json': {
 									schema: { $ref: '#/components/schemas/Ticket' },
@@ -982,7 +988,8 @@ const swaggerOptions: swaggerJSDoc.Options = {
 							},
 						},
 						'422': {
-							description: 'Invalid ticketId or any present request body.',
+							description:
+								'Invalid ticketId, any present body, or status transition (invalid_status_transition).',
 							content: {
 								'application/json': {
 									schema: { $ref: '#/components/schemas/ErrorResponse' },
@@ -990,7 +997,167 @@ const swaggerOptions: swaggerJSDoc.Options = {
 							},
 						},
 						'500': {
-							description: 'Unexpected error; transaction rolled back.',
+							description: 'Unexpected error.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+					},
+				},
+			},
+			'/api/support/tickets/{ticketId}/reject': {
+				post: {
+					summary: 'Reject the resolution of a Ticket as its requester',
+					description:
+						'Requester rejects the proposed solution: resolvido -> pendente. Requester owner only; backoffice or cd role need not match Ticket origin. Locks Ticket, changes status and writes the alteracao_status audit atomically. Optional message/mediaIds create a requester-visible Message and an extra nova_mensagem audit; mediaIds require message. Any other current status returns 422.',
+					tags: ['Tickets'],
+					parameters: [
+						{ $ref: '#/components/parameters/CorrelationIdHeader' },
+						{ $ref: '#/components/parameters/PerformedByHeader' },
+						{ $ref: '#/components/parameters/PerformedByTypeHeader' },
+						{
+							in: 'path',
+							name: 'ticketId',
+							required: true,
+							schema: { type: 'string', format: 'uuid' },
+						},
+					],
+					requestBody: {
+						required: false,
+						content: {
+							'application/json': {
+								schema: {
+									$ref: '#/components/schemas/RequesterTicketStatusRequest',
+								},
+							},
+						},
+					},
+					responses: {
+						'200': {
+							description: 'Complete Ticket after the status change.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/Ticket' },
+								},
+							},
+						},
+						'400': {
+							description: 'Missing or invalid correlation/actor headers.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+						'403': {
+							description: 'Admin or non-owner.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+						'404': {
+							description: 'Ticket not found.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+						'422': {
+							description:
+								'Invalid ticketId, body, or status transition (invalid_status_transition).',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+						'500': {
+							description: 'Unexpected error.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+					},
+				},
+			},
+			'/api/support/tickets/{ticketId}/cancel': {
+				post: {
+					summary: 'Cancel a Ticket as its requester',
+					description:
+						'Requester cancels the ticket: pendente or em_andamento -> cancelado. Requester owner only; backoffice or cd role need not match Ticket origin. Locks Ticket, changes status and writes the alteracao_status audit atomically. Optional message/mediaIds create a requester-visible Message and an extra nova_mensagem audit; mediaIds require message. Any other current status returns 422.',
+					tags: ['Tickets'],
+					parameters: [
+						{ $ref: '#/components/parameters/CorrelationIdHeader' },
+						{ $ref: '#/components/parameters/PerformedByHeader' },
+						{ $ref: '#/components/parameters/PerformedByTypeHeader' },
+						{
+							in: 'path',
+							name: 'ticketId',
+							required: true,
+							schema: { type: 'string', format: 'uuid' },
+						},
+					],
+					requestBody: {
+						required: false,
+						content: {
+							'application/json': {
+								schema: {
+									$ref: '#/components/schemas/RequesterTicketStatusRequest',
+								},
+							},
+						},
+					},
+					responses: {
+						'200': {
+							description: 'Complete Ticket after the status change.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/Ticket' },
+								},
+							},
+						},
+						'400': {
+							description: 'Missing or invalid correlation/actor headers.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+						'403': {
+							description: 'Admin or non-owner.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+						'404': {
+							description: 'Ticket not found.',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+						'422': {
+							description:
+								'Invalid ticketId, body, or status transition (invalid_status_transition).',
+							content: {
+								'application/json': {
+									schema: { $ref: '#/components/schemas/ErrorResponse' },
+								},
+							},
+						},
+						'500': {
+							description: 'Unexpected error.',
 							content: {
 								'application/json': {
 									schema: { $ref: '#/components/schemas/ErrorResponse' },
@@ -1030,7 +1197,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						{
 							in: 'query',
 							name: 'status',
-							schema: { $ref: '#/components/schemas/TicketAdminStatus' },
+							schema: { $ref: '#/components/schemas/TicketStatus' },
 						},
 						{
 							in: 'query',
@@ -1137,7 +1304,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
 						{
 							in: 'query',
 							name: 'status',
-							schema: { $ref: '#/components/schemas/TicketAdminStatus' },
+							schema: { $ref: '#/components/schemas/TicketStatus' },
 						},
 						{
 							in: 'query',

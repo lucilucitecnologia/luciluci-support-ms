@@ -1,7 +1,7 @@
 import { IsEnum, IsUUID, ValidateIf } from 'class-validator';
 
-import TicketAdminStatus from '../../../entities/enums/ticket-admin-status.enum';
 import TicketPriority from '../../../entities/enums/ticket-priority.enum';
+import TicketStatus from '../../../entities/enums/ticket-status.enum';
 
 export default class UpdateTicketRequestDTO {
 	@ValidateIf((_object, value) => value !== undefined)
@@ -13,6 +13,6 @@ export default class UpdateTicketRequestDTO {
 	departmentId?: string;
 
 	@ValidateIf((_object, value) => value !== undefined)
-	@IsEnum(TicketAdminStatus)
-	adminStatus?: TicketAdminStatus;
+	@IsEnum(TicketStatus)
+	status?: TicketStatus;
 }

@@ -13,8 +13,7 @@ function fixture(status = 'em_andamento') {
 		id: 'f57d57a6-3b94-4d4b-bf09-73c127e02c45',
 		departmentId: 'a19cf070-ea36-41df-9382-e44d541f8003',
 		requesterId: 'owner',
-		adminStatus: status,
-		requesterStatus: 'resolvido',
+		status: status,
 		updatedAt: before,
 	});
 	const department = Object.assign(new Department(), {
@@ -40,7 +39,7 @@ function fixture(status = 'em_andamento') {
 		createMedia: jest.fn(async () => {
 			calls.push('media');
 		}),
-		touchAfterAdminMessage: jest.fn(async () => {
+		updateAfterAdminMessage: jest.fn(async () => {
 			calls.push('touch');
 		}),
 		updateAfterRequesterMessage: jest.fn(async () => {
@@ -92,14 +91,16 @@ describe('Unit: RF10 create TicketMessage', () => {
 				createdAt: after,
 			});
 			expect(f.calls).toEqual(['ticket', 'department', 'message', 'media', 'touch', 'audit']);
-			expect(f.tickets.touchAfterAdminMessage).toHaveBeenCalledWith(f.ticket.id, after);
+			expect(f.tickets.updateAfterAdminMessage).toHaveBeenCalledWith(
+				f.ticket.id,
+				after,
+				'em_andamento',
+			);
 			expect(f.tickets.updateAfterRequesterMessage).not.toHaveBeenCalled();
-			expect(f.ticket.adminStatus).toBe('em_andamento');
-			expect(f.ticket.requesterStatus).toBe('resolvido');
+			expect(f.ticket.status).toBe('em_andamento');
 			expect(f.tickets.createAuditLog).toHaveBeenCalledWith(
 				expect.objectContaining({
 					action: 'nova_mensagem',
-					statusType: null,
 					newStatus: null,
 					authorId: 'admin-1',
 					origin: 'admin',
@@ -136,14 +137,52 @@ describe('Unit: RF10 create TicketMessage', () => {
 			expect(
 				f.tickets.createAuditLog.mock.calls.map(([audit]) => [
 					audit.action,
-					audit.statusType,
 					audit.newStatus,
 				]),
 			).toEqual([
-				['nova_mensagem', null, null],
-				['alteracao_status', 'admin', 'pendente'],
+				['nova_mensagem', null],
+				['alteracao_status', 'pendente'],
 			]);
-			expect(f.ticket.requesterStatus).toBe('resolvido');
+		},
+	);
+
+	it('moves a pending ticket to em_andamento on the first admin message with a status audit', async () => {
+		const f = fixture('pendente');
+		await f.useCase.execute(
+			f.ticket.id,
+			{ message: 'Looking', type: 'admin', authorId: 'admin-1', isVisibleToRequester: true },
+			{ id: 'admin-1', role: 'admin' },
+		);
+		expect(f.tickets.updateAfterAdminMessage).toHaveBeenCalledWith(
+			f.ticket.id,
+			after,
+			'em_andamento',
+		);
+		expect(
+			f.tickets.createAuditLog.mock.calls.map(([audit]) => [audit.action, audit.newStatus]),
+		).toEqual([
+			['nova_mensagem', null],
+			['alteracao_status', 'em_andamento'],
+		]);
+	});
+
+	it.each(['finalizado', 'cancelado'])(
+		'rejects messages on %s tickets with ticket_closed before any write',
+		async (status) => {
+			for (const [type, id, role] of [
+				['admin', 'admin-1', 'admin'],
+				['cd', 'owner', 'cd'],
+			] as const) {
+				const f = fixture(status);
+				await expect(
+					f.useCase.execute(
+						f.ticket.id,
+						{ message: 'x', type, authorId: id, isVisibleToRequester: true },
+						{ id, role },
+					),
+				).rejects.toMatchObject({ statusCode: 422, message: 'ticket_closed' });
+				expect(f.tickets.createMessage).not.toHaveBeenCalled();
+			}
 		},
 	);
 

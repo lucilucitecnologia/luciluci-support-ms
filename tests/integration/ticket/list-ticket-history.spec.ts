@@ -79,8 +79,7 @@ describe('Integration: RF13 scoped Ticket history', () => {
 				priority: 'alta' as Ticket['priority'],
 				origin: 'cd' as Ticket['origin'],
 				originRefId: 'ref-1',
-				adminStatus: 'pendente' as Ticket['adminStatus'],
-				requesterStatus: 'nao_resolvido' as Ticket['requesterStatus'],
+				status: 'pendente' as Ticket['status'],
 				createdAt: date,
 				updatedAt: date,
 			},
@@ -93,8 +92,7 @@ describe('Integration: RF13 scoped Ticket history', () => {
 				priority: 'alta' as Ticket['priority'],
 				origin: 'backoffice' as Ticket['origin'],
 				originRefId: 'ref-1',
-				adminStatus: 'pendente' as Ticket['adminStatus'],
-				requesterStatus: 'nao_resolvido' as Ticket['requesterStatus'],
+				status: 'pendente' as Ticket['status'],
 				createdAt: date,
 				updatedAt: date,
 			},
@@ -107,8 +105,7 @@ describe('Integration: RF13 scoped Ticket history', () => {
 				priority: 'alta' as Ticket['priority'],
 				origin: 'cd' as Ticket['origin'],
 				originRefId: 'ref-1',
-				adminStatus: 'pendente' as Ticket['adminStatus'],
-				requesterStatus: 'nao_resolvido' as Ticket['requesterStatus'],
+				status: 'pendente' as Ticket['status'],
 				createdAt: date,
 				updatedAt: date,
 			},
@@ -148,7 +145,6 @@ describe('Integration: RF13 scoped Ticket history', () => {
 				authorId: 'admin-1',
 				origin: 'admin',
 				action: 'alteracao_status' as TicketAuditLog['action'],
-				statusType: 'admin',
 				newStatus: 'em_andamento',
 			},
 			{
@@ -177,7 +173,6 @@ describe('Integration: RF13 scoped Ticket history', () => {
 			audits.map((audit) => ({
 				...audit,
 				datetime: date,
-				statusType: audit.statusType ?? null,
 				newStatus: audit.newStatus ?? null,
 			})) as TicketAuditLog[],
 		);
@@ -203,16 +198,7 @@ describe('Integration: RF13 scoped Ticket history', () => {
 		);
 		expect(response.body.data[0].number).toBe(12);
 		expect(Object.keys(response.body.data[0]).sort()).toEqual(
-			[
-				'ticketId',
-				'number',
-				'datetime',
-				'authorId',
-				'origin',
-				'action',
-				'statusType',
-				'newStatus',
-			].sort(),
+			['ticketId', 'number', 'datetime', 'authorId', 'origin', 'action', 'newStatus'].sort(),
 		);
 		expect(await snapshot()).toEqual(before);
 	});
@@ -225,7 +211,6 @@ describe('Integration: RF13 scoped Ticket history', () => {
 			expect(first.body.pagination).toEqual({ page: 1, size: 1, total: 3, totalPages: 3 });
 			expect(first.body.data[0]).toMatchObject({
 				action: 'alteracao_status',
-				statusType: 'admin',
 				newStatus: 'em_andamento',
 			});
 			const second = await list(
@@ -236,7 +221,6 @@ describe('Integration: RF13 scoped Ticket history', () => {
 			expect(second.body.data[0]).toMatchObject({
 				action: 'nova_mensagem',
 				authorId: 'owner',
-				statusType: null,
 				newStatus: null,
 			});
 			const third = await list(
@@ -246,7 +230,6 @@ describe('Integration: RF13 scoped Ticket history', () => {
 			);
 			expect(third.body.data[0]).toMatchObject({
 				action: 'criacao_ticket',
-				statusType: null,
 				newStatus: null,
 			});
 			expect(

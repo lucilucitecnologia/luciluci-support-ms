@@ -180,7 +180,7 @@ async function main() {
 				'2026-09-01T00:00:00.000Z',
 			]);
 			await inspection.query(
-				'UPDATE tickets SET created_at=$2,updated_at=$2,admin_status=$3 WHERE id=$1',
+				'UPDATE tickets SET created_at=$2,updated_at=$2,status=$3 WHERE id=$1',
 				[second.id, '2026-09-04T23:59:59.999Z', 'resolvido'],
 			);
 			await inspection.query('UPDATE tickets SET created_at=$2,updated_at=$2 WHERE id=$1', [

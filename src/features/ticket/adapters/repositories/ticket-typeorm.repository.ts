@@ -23,7 +23,7 @@ import IListTicketHistoryRepository, {
 	HistoryScope,
 	ListTicketHistoryFilters,
 } from '../../use-cases/repositories/ilist-ticket-history.repository';
-import TicketAdminStatus from '../../entities/enums/ticket-admin-status.enum';
+import TicketStatus from '../../entities/enums/ticket-status.enum';
 import DepartmentAllowedUser from '../../../department/entities/department-allowed-user.entity';
 
 export default class TicketTypeormRepository
@@ -105,7 +105,7 @@ export default class TicketTypeormRepository
 				endExclusive: filters.endExclusive,
 			});
 		if (filters.status !== undefined)
-			query.andWhere('ticket.adminStatus = :status', { status: filters.status });
+			query.andWhere('ticket.status = :status', { status: filters.status });
 		if (filters.origin !== undefined)
 			query.andWhere('ticket.origin = :origin', { origin: filters.origin });
 		if (filters.originRefId !== undefined)
@@ -135,25 +135,29 @@ export default class TicketTypeormRepository
 		await this.ticketRepository.update(ticket.id, {
 			priority: ticket.priority,
 			departmentId: ticket.departmentId,
-			adminStatus: ticket.adminStatus,
+			status: ticket.status,
 			updatedAt: ticket.updatedAt,
 		});
 	}
 
-	async updateRequesterStatus(ticket: Ticket): Promise<void> {
+	async updateStatus(ticket: Ticket): Promise<void> {
 		await this.ticketRepository.update(ticket.id, {
-			requesterStatus: ticket.requesterStatus,
+			status: ticket.status,
 			updatedAt: ticket.updatedAt,
 		});
 	}
 
-	async touchAfterAdminMessage(ticketId: string, updatedAt: Date): Promise<void> {
-		await this.ticketRepository.update(ticketId, { updatedAt });
+	async updateAfterAdminMessage(
+		ticketId: string,
+		updatedAt: Date,
+		status: TicketStatus,
+	): Promise<void> {
+		await this.ticketRepository.update(ticketId, { status, updatedAt });
 	}
 
 	async updateAfterRequesterMessage(ticketId: string, updatedAt: Date): Promise<void> {
 		await this.ticketRepository.update(ticketId, {
-			adminStatus: TicketAdminStatus.Pendente,
+			status: TicketStatus.Pendente,
 			updatedAt,
 		});
 	}
@@ -255,7 +259,6 @@ export default class TicketTypeormRepository
 			.addSelect('audit.authorId', 'authorId')
 			.addSelect('audit.origin', 'origin')
 			.addSelect('audit.action', 'action')
-			.addSelect('audit.statusType', 'statusType')
 			.addSelect('audit.newStatus', 'newStatus')
 			.orderBy('audit.datetime', 'DESC')
 			.addOrderBy('audit.id', 'DESC')
@@ -270,7 +273,6 @@ export default class TicketTypeormRepository
 				authorId: row.authorId,
 				origin: row.origin,
 				action: row.action,
-				statusType: row.statusType ?? null,
 				newStatus: row.newStatus ?? null,
 			})),
 			total,

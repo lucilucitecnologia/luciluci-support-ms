@@ -1,5 +1,27 @@
 # DRIFT_REPORT
 
+## Drift DRIFT-SUP-STATUS-001 — status único do Ticket (contrato canônico)
+
+O código local unificou `adminStatus`/`requesterStatus` em `status` e trocou o
+RF08 `resolve` por `approve`/`reject`/`cancel` (ver `ACTUAL_STATE.md`). O PRD
+canônico (`luciluci-docs/support`, revisão fixada `d034566`) ainda descreve o
+modelo antigo e precisa de revisão antes de qualquer congelamento:
+
+- §9.2 "Independência dos status": substituir por status único e fluxo ITIL.
+- Campos `adminStatus`/`requesterStatus` (tabela de Ticket, RF05, RF06, RF09) e
+  `statusType` do AuditLog (RF13, §4/§8): remover; `newStatus` permanece.
+- RF06: transições livres só para admin; solicitante não altera `status`.
+- RF08: deixa de ser "resolver"; passa a `approve`, `reject` e `cancel`
+  (14 → 16 operações Support) com `invalid_status_transition`.
+- RF10: bloqueio `ticket_closed` e a mudança `pendente → em_andamento` na
+  primeira mensagem do admin; P3, P4 e P5 e a tabela de auditoria.
+- `notes.md`, `tdd.md` e `tp.md`: 10, 23 e 11 menções respectivamente.
+- DEC-SUP-06 (RF08 repetida sem semântica de no-op) fica superada: agora é `422`.
+
+Fora do escopo desta mudança: finalização automática de `resolvido` por tempo
+(sem SLA no PRD). Estado: código local pronto e provado; contrato canônico
+pendente; mudança incompatível de OpenAPI pendente de aceite.
+
 ## W1 integrada sem drift funcional novo
 
 A PR #17 integrou a seed W1 em `main` no merge `1c1348d`. A CI remota

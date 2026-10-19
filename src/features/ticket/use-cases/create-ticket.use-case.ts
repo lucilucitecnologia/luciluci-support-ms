@@ -3,11 +3,10 @@ import { randomUUID } from 'node:crypto';
 import NotFoundError from '../../../shared/kernel/exceptions/not-found.error';
 import UnprocessableEntityError from '../../../shared/kernel/exceptions/unprocessable-entity.error';
 import IDepartmentRepository from '../../department/use-cases/repositories/idepartment.repository';
-import TicketAdminStatus from '../entities/enums/ticket-admin-status.enum';
+import TicketStatus from '../entities/enums/ticket-status.enum';
 import TicketAuditAction from '../entities/enums/ticket-audit-action.enum';
 import TicketOrigin from '../entities/enums/ticket-origin.enum';
 import TicketPriority from '../entities/enums/ticket-priority.enum';
-import TicketRequesterStatus from '../entities/enums/ticket-requester-status.enum';
 import Ticket from '../entities/ticket.entity';
 import TicketAuditLog from '../entities/ticket-audit-log.entity';
 import TicketMessage from '../entities/ticket-message.entity';
@@ -58,8 +57,7 @@ export default class CreateTicketUseCase {
 		ticket.priority = input.priority;
 		ticket.origin = input.origin;
 		ticket.originRefId = input.originRefId;
-		ticket.adminStatus = TicketAdminStatus.Pendente;
-		ticket.requesterStatus = TicketRequesterStatus.NaoResolvido;
+		ticket.status = TicketStatus.Pendente;
 		ticket.createdAt = timestamp;
 		ticket.updatedAt = timestamp;
 		await this.ticketRepository.createTicket(ticket);
@@ -90,7 +88,6 @@ export default class CreateTicketUseCase {
 		auditLog.authorId = ticket.requesterId;
 		auditLog.origin = ticket.origin;
 		auditLog.action = TicketAuditAction.CriacaoTicket;
-		auditLog.statusType = null;
 		auditLog.newStatus = null;
 		await this.ticketRepository.createAuditLog(auditLog);
 

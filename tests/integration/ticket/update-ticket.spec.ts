@@ -94,8 +94,7 @@ describe('Integration: RF06 update ticket', () => {
 				'priority',
 				'origin',
 				'originRefId',
-				'adminStatus',
-				'requesterStatus',
+				'status',
 				'createdAt',
 				'updatedAt',
 			].sort(),
@@ -106,35 +105,44 @@ describe('Integration: RF06 update ticket', () => {
 		expect(await audits()).toHaveLength(1);
 	});
 
-	it.each(['admin', 'backoffice', 'cd'])(
-		'audits a status change by %s exactly once',
+	it('audits an admin status change exactly once', async () => {
+		const response = await patch({ status: 'resolvido' }, adminId, 'admin');
+		expect(response.status).toBe(200);
+		expect(response.body.status).toBe('resolvido');
+		expect((await audits())[1]).toMatchObject({
+			action: 'alteracao_status',
+			newStatus: 'resolvido',
+			authorId: adminId,
+			origin: 'admin',
+		});
+		expect(await audits()).toHaveLength(2);
+	});
+
+	it.each(['backoffice', 'cd'])(
+		'forbids %s requester status changes via PATCH without any write',
 		async (role) => {
-			const actor = role === 'admin' ? adminId : requesterId;
-			const response = await patch({ adminStatus: 'resolvido' }, actor, role);
+			const before = await ticket();
+			const response = await patch({ status: 'cancelado' }, requesterId, role);
+			expect(response.status).toBe(403);
+			expect(await ticket()).toEqual(before);
+			expect(await audits()).toHaveLength(1);
+		},
+	);
+
+	it.each(['backoffice', 'cd'])(
+		'lets %s requester edit priority alongside unchanged status rules',
+		async (role) => {
+			const response = await patch({ priority: 'urgente' }, requesterId, role);
 			expect(response.status).toBe(200);
-			expect(response.body.adminStatus).toBe('resolvido');
-			expect((await audits())[1]).toMatchObject({
-				action: 'alteracao_status',
-				statusType: 'admin',
-				newStatus: 'resolvido',
-				authorId: actor,
-				origin: role,
-			});
-			expect(await audits()).toHaveLength(2);
+			expect(response.body.priority).toBe('urgente');
 		},
 	);
 
 	it('accepts every status and regression while auditing each effective transition', async () => {
-		for (const adminStatus of [
-			'cancelado',
-			'em_andamento',
-			'finalizado',
-			'resolvido',
-			'pendente',
-		]) {
-			const response = await patch({ adminStatus });
+		for (const status of ['cancelado', 'em_andamento', 'finalizado', 'resolvido', 'pendente']) {
+			const response = await patch({ status });
 			expect(response.status).toBe(200);
-			expect(response.body.adminStatus).toBe(adminStatus);
+			expect(response.body.status).toBe(status);
 		}
 		expect(await audits()).toHaveLength(6);
 	});
@@ -162,7 +170,7 @@ describe('Integration: RF06 update ticket', () => {
 		const before = await ticket();
 		const response = await patch({
 			priority: 'alta',
-			adminStatus: 'pendente',
+			status: 'pendente',
 			departmentId: currentId,
 		});
 		expect(response.status).toBe(200);
@@ -174,7 +182,7 @@ describe('Integration: RF06 update ticket', () => {
 	it.each([
 		['admin outside current ACL', adminId, 'admin', { priority: 'media' }, 'current'],
 		['nonowner backoffice', 'other-requester', 'backoffice', { priority: 'media' }, 'none'],
-		['nonowner cd', 'other-requester', 'cd', { adminStatus: 'finalizado' }, 'none'],
+		['nonowner cd', 'other-requester', 'cd', { status: 'finalizado' }, 'none'],
 	])('rejects %s with 403 and no write', async (_case, actor, role, body, mutation) => {
 		if (mutation === 'current')
 			await TestDataSource.getRepository(DepartmentAllowedUser).delete({
@@ -192,7 +200,7 @@ describe('Integration: RF06 update ticket', () => {
 			departmentId: targetId,
 		});
 		const before = await ticket();
-		const response = await patch({ departmentId: targetId, adminStatus: 'finalizado' });
+		const response = await patch({ departmentId: targetId, status: 'finalizado' });
 		expect(response.status).toBe(403);
 		expect(await ticket()).toEqual(before);
 		expect(await audits()).toHaveLength(1);
@@ -220,7 +228,7 @@ describe('Integration: RF06 update ticket', () => {
 		null,
 		{ priority: 'ALTA' },
 		{ departmentId: 'invalid' },
-		{ adminStatus: 'unknown' },
+		{ status: 'unknown' },
 		{ requesterStatus: 'resolvido' },
 		{ subject: 'changed' },
 		{ priority: 'alta', unexpected: true },

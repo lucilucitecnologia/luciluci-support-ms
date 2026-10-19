@@ -18,7 +18,6 @@ export interface HistoryRow {
 	authorId: string;
 	origin: string;
 	action: string;
-	statusType: string | null;
 	newStatus: string | null;
 }
 

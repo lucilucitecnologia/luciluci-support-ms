@@ -1,6 +1,6 @@
 import { parseListTicketsQuery } from '../../../src/features/ticket/adapters/controllers/dtos/list-tickets-query.dto';
 import Ticket from '../../../src/features/ticket/entities/ticket.entity';
-import TicketAdminStatus from '../../../src/features/ticket/entities/enums/ticket-admin-status.enum';
+import TicketStatus from '../../../src/features/ticket/entities/enums/ticket-status.enum';
 import TicketOrigin from '../../../src/features/ticket/entities/enums/ticket-origin.enum';
 import TicketPriority from '../../../src/features/ticket/entities/enums/ticket-priority.enum';
 import IListTicketsRepository from '../../../src/features/ticket/use-cases/repositories/ilist-tickets.repository';
@@ -27,9 +27,8 @@ describe('Unit: RF07 listing contract', () => {
 			origin: TicketOrigin.Cd,
 			originRefId: 'ref-1',
 			priority: TicketPriority.Urgente,
-			adminStatus: TicketAdminStatus.Resolvido,
+			status: TicketStatus.Resolvido,
 			subject: 'Private subject',
-			requesterStatus: 'nao_resolvido',
 			updatedAt: new Date('2026-09-05T00:00:00.000Z'),
 		});
 		const repository = {

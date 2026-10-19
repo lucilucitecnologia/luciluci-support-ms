@@ -93,8 +93,7 @@ describe('Integration: RF09 get ticket by ID', () => {
 				'priority',
 				'origin',
 				'originRefId',
-				'adminStatus',
-				'requesterStatus',
+				'status',
 				'createdAt',
 				'updatedAt',
 			].sort(),
@@ -103,8 +102,7 @@ describe('Integration: RF09 get ticket by ID', () => {
 			id: ticketId,
 			requesterId,
 			departmentId,
-			adminStatus: 'pendente',
-			requesterStatus: 'nao_resolvido',
+			status: 'pendente',
 		});
 		expect(await snapshot()).toEqual(before);
 	});

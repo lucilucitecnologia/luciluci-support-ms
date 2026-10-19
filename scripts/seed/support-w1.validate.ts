@@ -4,7 +4,7 @@ import { W1_ACTORS, W1Fixture, W1_SCENARIOS, W1_TABLES, W1Row } from './support-
 
 const uuidV4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const isoUtc = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
-const counts = [6, 7, 16, 44, 8, 80];
+const counts = [6, 7, 16, 44, 8, 98];
 const field = (row: W1Row, name: string): string => String(row[name]);
 const same = (actual: unknown, expected: unknown, label: string): void =>
 	assert.deepEqual(actual, expected, 'Invalid W1 fixture: ' + label);
@@ -95,13 +95,13 @@ export function validateW1Fixture(fixture: W1Fixture): void {
 
 	const priorities = new Set<string>();
 	const origins = new Set<string>();
-	const adminStatuses = new Set<string>();
-	const requesterStatuses = new Set<string>();
+	const statuses = new Set<string>();
 	let followUps = 0;
 	let adminMessages = 0;
 	let visibleAdmin = 0;
-	let rf06Changes = 0;
-	let requesterResolutions = 0;
+	let adminStepChanges = 0;
+	let requesterStepChanges = 0;
+	let adminMessageStatusAudits = 0;
 	for (const [index, scenario] of W1_SCENARIOS.entries()) {
 		const ticket = fixture.tickets[index];
 		const ticketId = field(ticket, 'id');
@@ -117,12 +117,7 @@ export function validateW1Fixture(fixture: W1Fixture): void {
 		same(ticket.number, index + 1, 'Ticket.number');
 		same(field(ticket, 'requester_id'), scenario.requester, 'Ticket requester');
 		same(field(ticket, 'priority'), scenario.priority, 'Ticket priority');
-		same(field(ticket, 'admin_status'), scenario.adminStatus, 'Ticket adminStatus');
-		same(
-			field(ticket, 'requester_status'),
-			scenario.requesterResolved ? 'resolvido' : 'nao_resolvido',
-			'Ticket requesterStatus',
-		);
+		same(field(ticket, 'status'), scenario.status, 'Ticket status');
 		const origin = scenario.requester.startsWith('seed-cd-') ? 'cd' : 'backoffice';
 		same(field(ticket, 'origin'), origin, 'Ticket origin');
 		same(
@@ -168,10 +163,7 @@ export function validateW1Fixture(fixture: W1Fixture): void {
 		const audits = fixture.ticket_audit_logs.filter((row) => row.ticket_id === ticketId);
 		same(
 			audits.length,
-			2 +
-				(scenario.followUp ? 2 : 0) +
-				scenario.adminTransitions.length +
-				(scenario.requesterResolved ? 1 : 0),
+			1 + (scenario.followUp ? 2 : 0) + 2 + scenario.steps.length,
 			'audit count per Ticket',
 		);
 		const creation = audits[0];
@@ -180,19 +172,17 @@ export function validateW1Fixture(fixture: W1Fixture): void {
 				creation.action,
 				creation.author_id,
 				creation.origin,
-				creation.status_type,
 				creation.new_status,
 				creation.datetime,
 			],
-			['criacao_ticket', scenario.requester, origin, null, null, ticket.created_at],
+			['criacao_ticket', scenario.requester, origin, null, ticket.created_at],
 			'creation audit',
 		);
-		let logicalAdminStatus = 'pendente';
-		let logicalRequesterStatus = 'nao_resolvido';
+		let logicalStatus = 'pendente';
 		const auditedMessageIds = new Set<string>();
 		let rf10Audits = 0;
-		let rf06ForTicket = 0;
-		let resolutionSeen = false;
+		let adminMessageStatusAudited = false;
+		let stepsApplied = 0;
 		let requesterMessageAudited = false;
 		let adminMessageAudited = false;
 		let lastTime = field(ticket, 'created_at');
@@ -200,7 +190,7 @@ export function validateW1Fixture(fixture: W1Fixture): void {
 			assert.ok(field(audit, 'datetime') >= lastTime, 'Audit timeline is not monotonic');
 			lastTime = field(audit, 'datetime');
 			if (audit.action === 'nova_mensagem') {
-				assert.ok(!resolutionSeen, 'Message audit after requester resolution');
+				assert.ok(stepsApplied === 0, 'Message audit after a status step');
 				const matchingMessage = messages
 					.slice(1)
 					.find((message) => message.created_at === audit.datetime);
@@ -222,97 +212,92 @@ export function validateW1Fixture(fixture: W1Fixture): void {
 				}
 				auditedMessageIds.add(field(matchingMessage, 'id'));
 				same(
-					[audit.author_id, audit.origin, audit.status_type, audit.new_status],
-					[matchingMessage.author_id, matchingMessage.type, null, null],
+					[audit.author_id, audit.origin, audit.new_status],
+					[matchingMessage.author_id, matchingMessage.type, null],
 					'message audit status fields',
 				);
-			} else if (
-				audit.action === 'alteracao_status' &&
-				audit.origin !== 'admin' &&
-				audit.status_type === 'admin'
-			) {
+			} else if (audit.action !== 'alteracao_status') {
+				throw new Error('Invalid W1 audit action/role');
+			} else if (!adminMessageAudited) {
+				// RF10: a requester message always reopens the Ticket as pendente.
 				assert.ok(
-					scenario.followUp &&
-						requesterMessageAudited &&
-						!adminMessageAudited &&
-						rf10Audits === 0,
+					scenario.followUp && requesterMessageAudited && rf10Audits === 0,
 					'Unexpected RF10 audit',
 				);
-				assert.ok(!resolutionSeen, 'RF10 audit after requester resolution');
 				same(
 					[audit.author_id, audit.origin, audit.new_status],
 					[scenario.requester, origin, 'pendente'],
 					'RF10 requester status audit',
 				);
 				same(audit.datetime, messages[1].created_at, 'RF10 requester audit time');
-				logicalAdminStatus = 'pendente';
+				logicalStatus = 'pendente';
 				rf10Audits++;
-			} else if (
-				audit.action === 'alteracao_status' &&
-				audit.origin === 'admin' &&
-				audit.status_type === 'admin'
-			) {
-				assert.ok(!resolutionSeen, 'RF06 audit after requester resolution');
-				assert.ok(adminMessageAudited, 'RF06 audit before admin Message');
-				assert.notEqual(
-					audit.new_status,
-					logicalAdminStatus,
-					'RF06 audit must be effective',
-				);
+			} else if (!adminMessageStatusAudited) {
+				// RF10: the first admin message on a pendente Ticket moves it to em_andamento.
+				same(logicalStatus, 'pendente', 'admin message requires pendente');
 				same(
-					[audit.author_id, audit.new_status],
-					[admin.author_id, scenario.adminTransitions[rf06ForTicket]],
-					'RF06 transition matrix',
+					[audit.author_id, audit.origin, audit.new_status, audit.datetime],
+					[admin.author_id, 'admin', 'em_andamento', admin.created_at],
+					'admin message status audit',
 				);
-				logicalAdminStatus = field(audit, 'new_status');
-				rf06ForTicket++;
-				rf06Changes++;
-			} else if (audit.action === 'alteracao_status' && audit.status_type === 'requester') {
-				assert.ok(adminMessageAudited, 'RF08 audit before admin Message');
-				same(
-					rf06ForTicket,
-					scenario.adminTransitions.length,
-					'RF08 before RF06 completion',
-				);
+				logicalStatus = 'em_andamento';
+				adminMessageStatusAudited = true;
+				adminMessageStatusAudits++;
+			} else {
+				const step = scenario.steps[stepsApplied];
+				assert.ok(step, 'Unexpected status step');
+				const byAdmin = step.by === 'admin';
 				same(
 					[audit.author_id, audit.origin, audit.new_status],
-					[scenario.requester, origin, 'resolvido'],
-					'RF08 requester audit',
+					[
+						byAdmin ? admin.author_id : scenario.requester,
+						byAdmin ? 'admin' : origin,
+						step.status,
+					],
+					'status step audit',
 				);
-				assert.notEqual(
-					logicalRequesterStatus,
-					'resolvido',
-					'duplicate requester resolution',
-				);
-				logicalRequesterStatus = 'resolvido';
-				resolutionSeen = true;
-				requesterResolutions++;
-			} else throw new Error('Invalid W1 audit action/role');
+				assert.notEqual(audit.new_status, logicalStatus, 'status step must be effective');
+				if (byAdmin) adminStepChanges++;
+				else {
+					// Requester steps only exist as approve, reject or cancel.
+					const allowed: Record<string, string[]> = {
+						finalizado: ['resolvido'],
+						pendente: ['resolvido'],
+						cancelado: ['pendente', 'em_andamento'],
+					};
+					assert.ok(
+						allowed[step.status]?.includes(logicalStatus),
+						'Requester step from invalid status',
+					);
+					requesterStepChanges++;
+				}
+				logicalStatus = field(audit, 'new_status');
+				stepsApplied++;
+			}
 		}
 		same(auditedMessageIds.size, messages.length - 1, 'nova_mensagem per post-initial Message');
 		same(rf10Audits, scenario.followUp ? 1 : 0, 'RF10 count per Ticket');
-		same(rf06ForTicket, scenario.adminTransitions.length, 'RF06 count per Ticket');
-		same(logicalAdminStatus, scenario.adminStatus, 'logical final adminStatus');
-		same(logicalRequesterStatus, ticket.requester_status, 'logical final requesterStatus');
+		same(adminMessageStatusAudited, true, 'admin message status audit per Ticket');
+		same(stepsApplied, scenario.steps.length, 'status steps per Ticket');
+		same(logicalStatus, scenario.status, 'logical final status');
 		same(field(ticket, 'updated_at'), lastTime, 'Ticket.updatedAt final timeline');
 		priorities.add(field(ticket, 'priority'));
 		origins.add(field(ticket, 'origin'));
-		adminStatuses.add(field(ticket, 'admin_status'));
-		requesterStatuses.add(field(ticket, 'requester_status'));
+		statuses.add(field(ticket, 'status'));
 	}
 	same(priorities, new Set(['baixa', 'media', 'alta', 'urgente']), 'Ticket priorities');
 	same(origins, new Set(['backoffice', 'cd']), 'Ticket origins');
 	same(
-		adminStatuses,
-		new Set(['pendente', 'cancelado', 'em_andamento', 'finalizado', 'resolvido']),
-		'Ticket adminStatuses',
+		statuses,
+		new Set(['pendente', 'em_andamento', 'resolvido', 'finalizado', 'cancelado']),
+		'Ticket statuses',
 	);
-	same(requesterStatuses, new Set(['nao_resolvido', 'resolvido']), 'Ticket requesterStatuses');
 	same(
-		[followUps, adminMessages, visibleAdmin, rf06Changes, requesterResolutions],
-		[12, 16, 8, 16, 8],
+		[followUps, adminMessages, visibleAdmin, adminStepChanges, requesterStepChanges],
+		[12, 16, 8, 19, 7],
 		'W1 event distribution',
 	);
+	same(adminMessageStatusAudits, 16, 'admin message status audits');
 	const actionCounts = fixture.ticket_audit_logs.reduce<Record<string, number>>((total, row) => {
 		const action = field(row, 'action');
 		total[action] = (total[action] ?? 0) + 1;
@@ -320,7 +305,7 @@ export function validateW1Fixture(fixture: W1Fixture): void {
 	}, {});
 	same(
 		actionCounts,
-		{ criacao_ticket: 16, nova_mensagem: 28, alteracao_status: 36 },
+		{ criacao_ticket: 16, nova_mensagem: 28, alteracao_status: 54 },
 		'Audit action breakdown',
 	);
 }

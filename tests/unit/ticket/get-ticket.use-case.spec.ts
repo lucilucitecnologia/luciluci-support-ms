@@ -1,8 +1,7 @@
 import Ticket from '../../../src/features/ticket/entities/ticket.entity';
-import TicketAdminStatus from '../../../src/features/ticket/entities/enums/ticket-admin-status.enum';
+import TicketStatus from '../../../src/features/ticket/entities/enums/ticket-status.enum';
 import TicketOrigin from '../../../src/features/ticket/entities/enums/ticket-origin.enum';
 import TicketPriority from '../../../src/features/ticket/entities/enums/ticket-priority.enum';
-import TicketRequesterStatus from '../../../src/features/ticket/entities/enums/ticket-requester-status.enum';
 import GetTicketUseCase from '../../../src/features/ticket/use-cases/get-ticket.use-case';
 import IGetTicketRepository from '../../../src/features/ticket/use-cases/repositories/iget-ticket.repository';
 
@@ -20,8 +19,7 @@ function ticket(): Ticket {
 		priority: TicketPriority.Alta,
 		origin: TicketOrigin.Backoffice,
 		originRefId: 'ref-1',
-		adminStatus: TicketAdminStatus.Pendente,
-		requesterStatus: TicketRequesterStatus.Resolvido,
+		status: TicketStatus.Pendente,
 		createdAt,
 		updatedAt: createdAt,
 	});
@@ -51,8 +49,7 @@ describe('Unit: RF09 get ticket by ID', () => {
 				priority: 'alta',
 				origin: 'backoffice',
 				originRefId: 'ref-1',
-				adminStatus: 'pendente',
-				requesterStatus: 'resolvido',
+				status: 'pendente',
 				createdAt: createdAt.toISOString(),
 				updatedAt: createdAt.toISOString(),
 			});
