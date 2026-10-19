@@ -42,8 +42,15 @@ no fluxo ITIL; volumes agora 6 Departments / 7 memberships / 16 Tickets /
 enfraquecido; exige aceite explícito antes de integrar em `main`. O BFF que
 consome `adminStatus`/`requesterStatus`/`/resolve` precisa ser ajustado.
 
-Limites: o contrato canônico em `luciluci-docs` (PRD/TDD/TP/notes, que ainda
-descrevem §9.2 "Independência dos status", RF08 e P3–P5) **não** foi atualizado.
+Contrato canônico: a revisão Support 1.0 (PRD, TDD, TP, notes e README, com
+DEC-SUP-13) foi redigida na branch local `docs/support-status-unico` do
+`luciluci-docs`, com base em `14efcdf` (Support 0.15). Está **sem commit e sem
+push**, e o gitlink deste repo continua em `d034566` (Support 0.9). Atenção: o
+`main` do `luciluci-docs` só contém Support 0.9; os contratos RF08–RF13
+(0.10–0.15, `93edf66`…`14efcdf`) não estão no GitHub, então publicar a branch os
+publica junto.
+
+Limites: o contrato 1.0 ainda não está publicado nem fixado no gitlink.
 Evidência local: `tsc`, ESLint, Prettier, `openapi:check` e suíte completa
 (37 suítes, 372 testes, SQLite de teste); migration `up`/`down` em PostgreSQL 16
 descartável com dados legados mistos; `proof:rf01…rf13`, `proof:seed:w1` e

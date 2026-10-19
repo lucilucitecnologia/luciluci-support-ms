@@ -18,9 +18,20 @@ modelo antigo e precisa de revisão antes de qualquer congelamento:
 - `notes.md`, `tdd.md` e `tp.md`: 10, 23 e 11 menções respectivamente.
 - DEC-SUP-06 (RF08 repetida sem semântica de no-op) fica superada: agora é `422`.
 
+Atualização 2026-10-19: a revisão Support 1.0 do contrato canônico foi redigida na
+branch local `docs/support-status-unico` do `luciluci-docs` (base `14efcdf`, PRD/TDD/TP/
+notes/README alterados, DEC-SUP-13), **sem commit nem push**. O `main` do docs só tem
+Support 0.9; os contratos RF08–RF13 (0.10–0.15) existem apenas em `14efcdf`, que não está
+no GitHub. O drift `originRefId` segue separado e não consolidado.
+
 Fora do escopo desta mudança: finalização automática de `resolvido` por tempo
-(sem SLA no PRD). Estado: código local pronto e provado; contrato canônico
-pendente; mudança incompatível de OpenAPI pendente de aceite.
+(sem SLA no PRD).
+
+**Estado:** código local pronto e provado; contrato canônico **redigido, mas
+não publicado** (todos os itens acima estão cobertos na branch local, falta
+commit, push e fixar o gitlink); mudança incompatível de OpenAPI pendente de
+aceite; consumidores (BFF) ainda não verificados. O drift só fecha quando o
+contrato 1.0 estiver publicado e o gitlink apontar para ele.
 
 ## W1 integrada sem drift funcional novo
 
